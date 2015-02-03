@@ -1,0 +1,24 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "emscripten_test", "emscripten_test.vcxproj", "{A7215FF2-4189-46FA-BDB7-176A65D52093}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Emscripten = Debug|Emscripten
+		Debug|Win32 = Debug|Win32
+		Release|Emscripten = Release|Emscripten
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A7215FF2-4189-46FA-BDB7-176A65D52093}.Debug|Emscripten.ActiveCfg = Debug|Emscripten
+		{A7215FF2-4189-46FA-BDB7-176A65D52093}.Debug|Emscripten.Build.0 = Debug|Emscripten
+		{A7215FF2-4189-46FA-BDB7-176A65D52093}.Debug|Win32.ActiveCfg = Debug|Emscripten
+		{A7215FF2-4189-46FA-BDB7-176A65D52093}.Release|Emscripten.ActiveCfg = Release|Emscripten
+		{A7215FF2-4189-46FA-BDB7-176A65D52093}.Release|Emscripten.Build.0 = Release|Emscripten
+		{A7215FF2-4189-46FA-BDB7-176A65D52093}.Release|Win32.ActiveCfg = Release|Emscripten
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
