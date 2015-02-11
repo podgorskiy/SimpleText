@@ -510,7 +510,8 @@ inline void SimpleTextImplDetails::RenderLabel(const char* text, int posX, int p
 	glBindTexture(GL_TEXTURE_2D, m_texture);
 
 	const char* begin = text;
-	const char* end = text + strlen(text);
+	const char* end = begin;
+	for (; *end != '\0';++end);
 
 	StartDraw();
 	int pos = 0;
@@ -740,8 +741,10 @@ inline void SimpleTextImplDetails::StartDraw()
 		{
 			glEnable(GL_BLEND);
 		}
+#ifndef __APPLE__
 		glGetIntegerv(GL_BLEND_SRC, &m_backUpSfactor);
 		glGetIntegerv(GL_BLEND_DST, &m_backUpDfactor);
+#endif
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	}
 
@@ -848,7 +851,7 @@ inline void SimpleTextImplDetails::CreateFontTexture()
 
 	unsigned char* buff = GenerateFontBitmap();
 
-#ifdef __EMSCRIPTEN__
+#if defined __EMSCRIPTEN__ || __APPLE__
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, TEXTURE_SIZE_X, TEXTURE_SIZE_Y, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, buff);
 #else
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, TEXTURE_SIZE_X, TEXTURE_SIZE_Y, 0, GL_RED, GL_UNSIGNED_BYTE, buff);
