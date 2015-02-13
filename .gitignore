@@ -26,3 +26,13 @@
 *.exe
 *.out
 *.app
+
+*.xccheckout
+
+*.xcuserstate
+
+*.xcworkspacedata
+
+*.xcscheme
+
+*.plist
