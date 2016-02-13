@@ -734,9 +734,9 @@ inline void SimpleTextImplDetails::Free()
 
 inline void SimpleTextImplDetails::StartDraw()
 {
+	m_backUpBlendingState = glIsEnabled(GL_BLEND);
 	if (m_blendingEnabled)
 	{
-		m_backUpBlendingState = glIsEnabled(GL_BLEND);
 		if (!m_backUpBlendingState)
 		{
 			glEnable(GL_BLEND);
@@ -747,6 +747,16 @@ inline void SimpleTextImplDetails::StartDraw()
 #endif
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	}
+	else
+	{
+		if (m_backUpBlendingState)
+		{
+			glDisable(GL_BLEND);
+		}
+	}
+
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_CULL_FACE);
 
 	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
 	glEnableVertexAttribArray(AttributePosition);
