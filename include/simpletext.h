@@ -674,7 +674,7 @@ inline bool SimpleTextImplDetails::Failed(GLuint object, Stage stage)
 		char* infoLog = new char[static_cast<GLuint>(maxLength)];
 		glGetShaderInfoLog(object, maxLength, &maxLength, infoLog);
 		SIMPLE_TEXT_PRINT_ERROR("%s\n", infoLog);
-		delete infoLog;
+		delete[] infoLog;
 		return true;
 	}
 	return false;
@@ -870,7 +870,7 @@ inline void SimpleTextImplDetails::CreateFontTexture()
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, TEXTURE_SIZE_X, TEXTURE_SIZE_Y, 0, GL_RED, GL_UNSIGNED_BYTE, buff);
 #endif
 
-	delete buff;
+	delete[] buff;
 }
 
 inline unsigned char* SimpleTextImplDetails::GenerateFontBitmap()
