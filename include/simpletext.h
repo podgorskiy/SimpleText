@@ -793,10 +793,9 @@ inline void SimpleTextImplDetails::CreateShaderProgram()
 		"}\n";
 
 	const GLchar* fShaderCode =
-		"#ifdef GL_ESprecision \n"
+		"#ifdef GL_ES \n"
 		"precision highp float; \n"
 		"#endif \n"
-		"precision highp float; \n"
 		"varying vec2 out_coord; \n"
 		"uniform sampler2D text; \n"
 		"uniform vec4 textoffset; \n"
