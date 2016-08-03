@@ -863,7 +863,7 @@ inline void SimpleTextImplDetails::CreateFontTexture()
 
 	unsigned char* buff = GenerateFontBitmap();
 
-#if defined __EMSCRIPTEN__ || __APPLE__
+#if defined __EMSCRIPTEN__ || TARGET_OS_IPHONE
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, TEXTURE_SIZE_X, TEXTURE_SIZE_Y, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, buff);
 #else
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, TEXTURE_SIZE_X, TEXTURE_SIZE_Y, 0, GL_RED, GL_UNSIGNED_BYTE, buff);
