@@ -71,25 +71,28 @@ public:
 	};
 
 	SimpleText();
-	
+
 	~SimpleText();
 
 	void RenderLabel(const char* text, int posX, int posY);
-		
+
 	void SetColor(ForegroundBackground type, Color color, NormalBold bold = NORMAL);
-	
+
 	void SetColor(ForegroundBackground type, unsigned char r, unsigned char g, unsigned char b, unsigned char a = 255);
 
 	void SetColorf(ForegroundBackground type, float r, float g, float b, float a = 1.0f);
 
 	void SetTextSize(FontSize size);
-	
+
 	void SetBackgroundColor(unsigned char r, unsigned char g, unsigned char b, unsigned char a);
 
 	void EnableBlending(bool enabled);
 
 	void ResetFont();
 
+	void Begin();
+	void PutSymbol(char s, int x, int y);
+	void End();
 private:
 	friend class SimpleTextImplDetails;
 	SimpleTextImplDetails* m_impl;
@@ -100,7 +103,7 @@ private:
 
 
 #ifndef SIMPLE_TEXT_PRINT_ERROR
-#define SIMPLE_TEXT_PRINT_ERROR(...)
+#define SIMPLE_TEXT_PRINT_ERROR(...) printf(__VA_ARGS__);
 #endif
 
 class SimpleTextImplDetails
@@ -177,10 +180,6 @@ public:
 	void BindUniforms();
 	unsigned char* GenerateFontBitmap();
 	void ApplyTextSize();
-	void SetSymbol(char symbol, float posX, float posY);
-	void Render();
-	void StartDraw();
-	void EndDraw();
 	void SetColor(SimpleText::ForegroundBackground type, SimpleText::Color color, SimpleText::NormalBold bold);
 	void GetColor(SimpleText::ForegroundBackground type, SimpleText::Color &color, SimpleText::NormalBold &bold);
 	void ResetAnsiColor();
@@ -190,7 +189,9 @@ public:
 	void SetColorf(SimpleText::ForegroundBackground type, float r, float g, float b, float a);
 	void SetTextSize(SimpleText::FontSize size);
 	void RenderLabel(const char* text, int posX, int posY);
-
+	void RenderSymbol(char symbol, float posX, float posY, int shift);
+	void StartDraw();
+	void EndDraw();
 private:
 	GLuint m_texture;
 	GLuint m_vertexShader;
@@ -213,8 +214,10 @@ private:
 	GLfloat m_textColor[4];
 	GLfloat m_backColor[4];
 
-	GLint m_backUpSfactor;
-	GLint m_backUpDfactor;
+	GLint m_backUpSfactorRGB;
+	GLint m_backUpDfactorRGB;
+	GLint m_backUpSfactorAlpha;
+	GLint m_backUpDfactorAlpha;
 
 	bool m_blendingEnabled;
 	GLboolean m_backUpBlendingState;
@@ -262,6 +265,22 @@ inline void SimpleText::RenderLabel(const char* text, int posX, int posY)
 {
 	m_impl->RenderLabel(text, posX, posY);
 }
+
+inline void SimpleText::Begin()
+{
+	m_impl->StartDraw();
+}
+
+inline void SimpleText::PutSymbol(char s, int x, int y)
+{
+	m_impl->RenderSymbol(s, static_cast<float>(x), static_cast<float>(y), 0);
+}
+
+inline void SimpleText::End()
+{
+	m_impl->EndDraw();
+}
+
 
 inline void SimpleText::SetColor(ForegroundBackground type, unsigned char r, unsigned char g, unsigned char b, unsigned char a)
 {
@@ -503,12 +522,6 @@ inline bool SimpleTextImplDetails::ANSI_EscapeCodeDecoder::DecodeEscapeCode(cons
 
 inline void SimpleTextImplDetails::RenderLabel(const char* text, int posX, int posY)
 {
-	ApplyTextSize();
-
-	glUseProgram(m_shaderprogram);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, m_texture);
-
 	const char* begin = text;
 	const char* end = begin;
 	for (; *end != '\0';++end);
@@ -520,10 +533,7 @@ inline void SimpleTextImplDetails::RenderLabel(const char* text, int posX, int p
 		char symbol = '\0';
 		if (!m_ansiDecoder.DecodeEscapeCode(it, end, symbol))
 		{
-			SetSymbol(symbol,
-				pos * m_sizeX - 1.0f + 2.0f * posX / m_viewport[2],
-				-2.0f * posY / m_viewport[3] + 1.0f - m_sizeY);
-			Render();
+			RenderSymbol(symbol, static_cast<float>(posX), static_cast<float>(posY), pos);
 			++pos;
 		}
 	}
@@ -558,7 +568,7 @@ inline void SimpleTextImplDetails::SetColor(SimpleText::ForegroundBackground typ
 			static_cast<float>(r) / 255.0f,
 			static_cast<float>(g) / 255.0f,
 			static_cast<float>(b) / 255.0f,
-			previousColor[3]);
+			1.0f);
 	}
 	if (effectedColor != NULL)
 	{
@@ -680,8 +690,9 @@ inline bool SimpleTextImplDetails::Failed(GLuint object, Stage stage)
 	return false;
 }
 
-inline void SimpleTextImplDetails::SetSymbol(char symbol, float posX, float posY)
+inline void SimpleTextImplDetails::RenderSymbol(char _symbol, float posX, float posY, int shift)
 {
+	int symbol = (unsigned char)_symbol;
 	int y = symbol / (TEXTURE_SIZE_X / SYMBOL_WIDTH);
 	int x = symbol % (TEXTURE_SIZE_X / SYMBOL_WIDTH);
 	float val[4];
@@ -690,19 +701,14 @@ inline void SimpleTextImplDetails::SetSymbol(char symbol, float posX, float posY
 	val[2] = static_cast<float>(SYMBOL_WIDTH) / TEXTURE_SIZE_X;
 	val[3] = static_cast<float>(SYMBOL_HEIGHT) / TEXTURE_SIZE_Y;
 	glUniform4fv(m_textureCoordULoc, 1, val);
-	val[0] = posX;
-	val[1] = posY;
+	val[0] = shift * m_sizeX - 1.0f + 2.0f * posX / m_viewport[2];
+	val[1] = -2.0f * posY / m_viewport[3] + 1.0f - m_sizeY;
 	val[2] = m_sizeX;
 	val[3] = m_sizeY;
 	glUniform4fv(m_positionULoc, 1, val);
-	int i = 0;
-	glUniform1iv(m_textureSamperULoc, 1, &i);
 	glUniform4fv(m_textColorULoc, 1, m_textColor);
 	glUniform4fv(m_backgroundColorULoc, 1, m_backColor);
-}
 
-inline void SimpleTextImplDetails::Render()
-{
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
@@ -734,6 +740,16 @@ inline void SimpleTextImplDetails::Free()
 
 inline void SimpleTextImplDetails::StartDraw()
 {
+	ApplyTextSize();
+
+	glUseProgram(m_shaderprogram);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, m_texture);
+
+	int i = 0;
+	glUniform1iv(m_textureSamperULoc, 1, &i);
+
 	m_backUpBlendingState = glIsEnabled(GL_BLEND);
 	if (m_blendingEnabled)
 	{
@@ -741,10 +757,12 @@ inline void SimpleTextImplDetails::StartDraw()
 		{
 			glEnable(GL_BLEND);
 		}
-#ifndef __APPLE__
-		glGetIntegerv(GL_BLEND_SRC, &m_backUpSfactor);
-		glGetIntegerv(GL_BLEND_DST, &m_backUpDfactor);
-#endif
+
+		glGetIntegerv(GL_BLEND_SRC_RGB, &m_backUpSfactorRGB);
+		glGetIntegerv(GL_BLEND_DST_RGB, &m_backUpDfactorRGB);
+		glGetIntegerv(GL_BLEND_SRC_ALPHA, &m_backUpSfactorAlpha);
+		glGetIntegerv(GL_BLEND_DST_ALPHA, &m_backUpDfactorAlpha);
+
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	}
 	else
@@ -773,7 +791,7 @@ inline void SimpleTextImplDetails::EndDraw()
 		{
 			glDisable(GL_BLEND);
 		}
-		glBlendFunc(static_cast<GLenum>(m_backUpSfactor), static_cast<GLenum>(m_backUpDfactor));
+		glBlendFuncSeparate(static_cast<GLenum>(m_backUpSfactorRGB), static_cast<GLenum>(m_backUpDfactorRGB), static_cast<GLenum>(m_backUpSfactorAlpha), static_cast<GLenum>(m_backUpDfactorAlpha));
 	}
 	glDisableVertexAttribArray(AttributePosition);
 	glDisableVertexAttribArray(AttributeTextureCoord);
@@ -783,27 +801,30 @@ inline void SimpleTextImplDetails::EndDraw()
 inline void SimpleTextImplDetails::CreateShaderProgram()
 {
 	const GLchar* vShaderCode =
+		"precision highp float; \n"
 		"attribute vec2 in_position; \n"
 		"attribute vec2 in_coord; \n"
 		"varying vec2 out_coord; \n"
 		"uniform vec4 posoffset; \n"
-		"void main(void) {\n"
+		"void main() {\n"
 		"	gl_Position = vec4(vec3(posoffset.xy + posoffset.zw * in_position, 0.0), 1.0); \n"
 		"	out_coord = in_coord; \n"
 		"}\n";
 
 	const GLchar* fShaderCode =
-		"#ifdef GL_ES \n"
 		"precision highp float; \n"
-		"#endif \n"
 		"varying vec2 out_coord; \n"
-		"uniform sampler2D text; \n"
+		"uniform sampler2D text; \n" 
 		"uniform vec4 textoffset; \n"
 		"uniform vec4 textColor; \n"
 		"uniform vec4 backgroundColor; \n"
-		"void main(void) {\n"
-		"	vec2 baseCoord = textoffset.xy + textoffset.zw * out_coord; \n"
-		"	float c = texture2D(text, baseCoord).r; \n"
+		"void main() {\n"
+		"	vec2 corrected = out_coord * textoffset.zw; \n"
+		"	corrected = max(corrected, vec2(0.5) / vec2(128.0, 256.0)); \n"
+		"	corrected = min(corrected, textoffset.zw - vec2(0.5) / vec2(128.0, 256.0)); \n"
+		"	vec2 baseCoord = textoffset.xy + corrected; \n"
+		"	float c = float(texture2D(text, baseCoord).r > 0.4); \n"
+		//"	float c = texture2D(text, baseCoord); \n"
 		"	gl_FragColor = mix(backgroundColor, textColor, vec4(c)); \n"
 		"}\n";
 	
@@ -811,18 +832,18 @@ inline void SimpleTextImplDetails::CreateShaderProgram()
 	glShaderSource(m_vertexShader, 1, &vShaderCode, 0);
 	glCompileShader(m_vertexShader);
 
-	if (Failed(m_vertexShader, COMPILE))
+	//if (Failed(m_vertexShader, COMPILE))
 	{
-		return;
+	//	return;
 	}
 
 	m_fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
 	glShaderSource(m_fragmentShader, 1, &fShaderCode, 0);
 	glCompileShader(m_fragmentShader);
 
-	if (Failed(m_fragmentShader, COMPILE))
+	//if (Failed(m_fragmentShader, COMPILE))
 	{
-		return;
+	//	return;
 	}
 
 	m_shaderprogram = glCreateProgram();
@@ -830,9 +851,9 @@ inline void SimpleTextImplDetails::CreateShaderProgram()
 	glAttachShader(m_shaderprogram, m_fragmentShader);
 	glLinkProgram(m_shaderprogram);
 
-	if (Failed(m_shaderprogram, LINK))
+	//if (Failed(m_shaderprogram, LINK))
 	{
-		return;
+	//	return;
 	}
 }
 
@@ -858,8 +879,6 @@ inline void SimpleTextImplDetails::CreateFontTexture()
 	m_texture = texture[0];
 
 	glBindTexture(GL_TEXTURE_2D, m_texture);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
 	unsigned char* buff = GenerateFontBitmap();
 
@@ -868,6 +887,10 @@ inline void SimpleTextImplDetails::CreateFontTexture()
 #else
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, TEXTURE_SIZE_X, TEXTURE_SIZE_Y, 0, GL_RED, GL_UNSIGNED_BYTE, buff);
 #endif
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glBindTexture(GL_TEXTURE_2D, 0);
 
 	delete[] buff;
 }
