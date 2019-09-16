@@ -25,6 +25,9 @@ SOFTWARE.
 
 #pragma once
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
 
 
 class SimpleTextImplDetails;
@@ -77,26 +80,25 @@ public:
 
 	~SimpleText();
 
-	void RenderLabel(const char* text, int posX, int posY);
+	void Label(const char* text, int posX, int posY);
 
 	void SetColor(ForegroundBackground type, Color color, NormalBold bold = NORMAL);
 
-	void SetColor(ForegroundBackground type, unsigned char r, unsigned char g, unsigned char b, unsigned char a = 255);
-
+	void SetColor(ForegroundBackground type, uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255);
 	void SetColorf(ForegroundBackground type, float r, float g, float b, float a = 1.0f);
 
 	void SetTextSize(FontSize size);
-
-	void SetBackgroundColor(unsigned char r, unsigned char g, unsigned char b, unsigned char a);
 
 	void EnableBlending(bool enabled);
 
 	void ResetFont();
 
+	void SetCurrentViewport();
+
+	void Render();
+
 	// API for symbol by symbol rendering
-	void Begin();
-	void PutSymbol(char s, int x, int y);
-	void End();
+	void SubmitSymbol(char s, int x, int y);
 private:
 	friend class SimpleTextImplDetails;
 	SimpleTextImplDetails* m_impl;
@@ -130,7 +132,15 @@ class SimpleTextImplDetails
 	enum Attributes
 	{
 		AttributePosition = 0,
-		AttributeTextureCoord = 1
+		AttributeTextureCoord = 1,
+		AttributeColorF = 2,
+		AttributeColorB = 3,
+	};
+
+	enum
+	{
+		min_size = 0x1000,
+		vertex_size = (sizeof(int16_t) * 2 + sizeof(float) * 2 + sizeof(uint8_t) * 8),
 	};
 
 	class ANSI_EscapeCodeDecoder
@@ -174,6 +184,12 @@ class SimpleTextImplDetails
 	};
 
 public:
+	template<typename T>
+	inline static T clamp(T x, T low, T high)
+	{
+		return x < low ? low : (x > high ? high : x);
+	}
+
 	SimpleTextImplDetails();
 	~SimpleTextImplDetails();
 	void CreateFontTexture();
@@ -190,33 +206,41 @@ public:
 	void DecodeColor(SimpleText::Color color, SimpleText::NormalBold bold, unsigned char& r, unsigned char& g, unsigned char& b);
 	void EnableBlending(bool enabled);
 	bool Succeeded(GLuint object, Stage stage);
-	void SetColorf(SimpleText::ForegroundBackground type, float r, float g, float b, float a);
+	void SetColor(SimpleText::ForegroundBackground type, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 	void SetTextSize(SimpleText::FontSize size);
-	void RenderLabel(const char* text, int posX, int posY);
-	void RenderSymbol(char symbol, float posX, float posY, int shift);
+	void Label(const char* text, int posX, int posY);
+	void SubmitSymbol(char symbol, float posX, float posY, int shift);
+
+	void Render();
+private:
 	void StartDraw();
 	void EndDraw();
-private:
+	void ResizeVertexBuffer(size_t newSize);
+
+	GLuint m_vbo;
+	GLuint m_ibo;
+
 	GLuint m_texture;
 	GLuint m_vertexShader;
 	GLuint m_fragmentShader;
 	GLuint m_shaderprogram;
 
 	GLint m_textureSamperULoc;
-	GLint m_positionULoc;
-	GLint m_textureCoordULoc;
-	GLint m_textColorULoc;
-	GLint m_backgroundColorULoc;
 
-	GLuint m_vbo;
+	uint8_t* m_vertex_buffer;
+	uint16_t* m_index_buffer;
+	size_t m_vertex_buffer_size;
+	size_t m_vertex_buffer_reserved;
+	size_t m_vertex_buffer_offset;
+	size_t m_vertex_count;
 
 	SimpleText::FontSize m_fontsize;
 	float m_sizeX;
 	float m_sizeY;
 	GLint m_viewport[4];
 
-	GLfloat m_textColor[4];
-	GLfloat m_backColor[4];
+	uint8_t m_textColor[4];
+	uint8_t m_backColor[4];
 
 	GLint m_backUpSfactorRGB;
 	GLint m_backUpDfactorRGB;
@@ -265,39 +289,38 @@ inline void SimpleText::EnableBlending(bool enabled)
 	m_impl->EnableBlending(enabled);
 }
 
-inline void SimpleText::RenderLabel(const char* text, int posX, int posY)
+inline void SimpleText::Label(const char* text, int posX, int posY)
 {
-	m_impl->RenderLabel(text, posX, posY);
+	m_impl->Label(text, posX, posY);
 }
 
-inline void SimpleText::Begin()
+inline void SimpleText::Render()
 {
-	m_impl->StartDraw();
+	m_impl->Render();
 }
 
-inline void SimpleText::PutSymbol(char s, int x, int y)
+inline void SimpleText::SetCurrentViewport()
 {
-	m_impl->RenderSymbol(s, static_cast<float>(x), static_cast<float>(y), 0);
+	m_impl->ApplyTextSize();
 }
 
-inline void SimpleText::End()
+inline void SimpleText::SubmitSymbol(char s, int x, int y)
 {
-	m_impl->EndDraw();
+	m_impl->SubmitSymbol(s, static_cast<float>(x), static_cast<float>(y), 0);
 }
 
-
-inline void SimpleText::SetColor(ForegroundBackground type, unsigned char r, unsigned char g, unsigned char b, unsigned char a)
+inline void SimpleText::SetColor(ForegroundBackground type, uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
-	SetColorf(type,
-		static_cast<float>(r) / 255.0f,
-		static_cast<float>(g) / 255.0f,
-		static_cast<float>(b) / 255.0f,
-		static_cast<float>(a) / 255.0f);
+	m_impl->SetColor(type, r, g, b, a);
 }
 
-inline void SimpleText::SetColorf(ForegroundBackground type, float r, float g, float b, float a)
+void SimpleText::SetColorf(ForegroundBackground type, float r, float g, float b, float a)
 {
-	m_impl->SetColorf(type, r, g, b, a);
+	uint8_t _r = SimpleTextImplDetails::clamp(static_cast<int>(r * 255.0f), 0, 255);
+	uint8_t _g = SimpleTextImplDetails::clamp(static_cast<int>(g * 255.0f), 0, 255);
+	uint8_t _b = SimpleTextImplDetails::clamp(static_cast<int>(b * 255.0f), 0, 255);
+	uint8_t _a = SimpleTextImplDetails::clamp(static_cast<int>(a * 255.0f), 0, 255);
+	m_impl->SetColor(type, _r, _g, _b, _a);
 }
 
 inline void SimpleText::SetColor(ForegroundBackground type, Color color, NormalBold bold)
@@ -310,9 +333,14 @@ inline void SimpleText::SetTextSize(FontSize size)
 	m_impl->SetTextSize(size);
 }
 
-inline SimpleTextImplDetails::SimpleTextImplDetails() :m_vertexShader(0), m_fragmentShader(0), m_shaderprogram(0), m_vbo(0)
+inline SimpleTextImplDetails::SimpleTextImplDetails() :m_vertexShader(0), m_fragmentShader(0), m_shaderprogram(0), m_vertex_buffer(
+		nullptr), m_vertex_buffer_size(0), m_vertex_buffer_reserved(0), m_vertex_buffer_offset(0), m_vertex_count(0), m_viewport{0}
 {
 	m_ansiDecoder.SetExecutor(new EscapeCodeExecuter(this));
+	m_vertex_buffer = nullptr;
+	m_index_buffer = nullptr;
+	m_vertex_buffer_reserved = 0;
+	ResizeVertexBuffer(min_size);
 }
 
 inline SimpleTextImplDetails::~SimpleTextImplDetails()
@@ -524,24 +552,22 @@ inline bool SimpleTextImplDetails::ANSI_EscapeCodeDecoder::DecodeEscapeCode(cons
 	return false;
 }
 
-inline void SimpleTextImplDetails::RenderLabel(const char* text, int posX, int posY)
+inline void SimpleTextImplDetails::Label(const char* text, int posX, int posY)
 {
 	const char* begin = text;
 	const char* end = begin;
 	for (; *end != '\0';++end);
 
-	StartDraw();
 	int pos = 0;
 	for (const char* it = begin; it != end;)
 	{
 		char symbol = '\0';
 		if (!m_ansiDecoder.DecodeEscapeCode(it, end, symbol))
 		{
-			RenderSymbol(symbol, static_cast<float>(posX), static_cast<float>(posY), pos);
+			SubmitSymbol(symbol, static_cast<float>(posX), static_cast<float>(posY), pos);
 			++pos;
 		}
 	}
-	EndDraw();
 }
 
 inline void SimpleTextImplDetails::EnableBlending(bool enable)
@@ -553,8 +579,8 @@ inline void SimpleTextImplDetails::SetColor(SimpleText::ForegroundBackground typ
 {
 	unsigned char r, g, b;
 	DecodeColor(color, bold, r, g, b);
-	GLfloat* previousColor = NULL;
-	SimpleText::Color* effectedColor = NULL;
+	uint8_t* previousColor = nullptr;
+	SimpleText::Color* effectedColor = nullptr;
 	switch (type)
 	{
 	case SimpleText::TEXT_COLOR:
@@ -566,15 +592,11 @@ inline void SimpleTextImplDetails::SetColor(SimpleText::ForegroundBackground typ
 		effectedColor = &m_ansiBackgroundColor;
 		break;
 	}
-	if (previousColor != NULL)
+	if (previousColor != nullptr)
 	{
-		SetColorf(type,
-			static_cast<float>(r) / 255.0f,
-			static_cast<float>(g) / 255.0f,
-			static_cast<float>(b) / 255.0f,
-			1.0f);
+		SetColor(type, r, g, b, 255);
 	}
-	if (effectedColor != NULL)
+	if (effectedColor != nullptr)
 	{
 		*effectedColor = color;
 		m_ansiBold = bold;
@@ -602,9 +624,9 @@ inline void SimpleTextImplDetails::ResetAnsiColor()
 	m_ansiBold = SimpleText::NORMAL;
 }
 
-inline void SimpleTextImplDetails::SetColorf(SimpleText::ForegroundBackground type, float r, float g, float b, float a)
+inline void SimpleTextImplDetails::SetColor(SimpleText::ForegroundBackground type, uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
-	GLfloat *color = NULL;
+	uint8_t *color = NULL;
 	switch (type)
 	{
 	case SimpleText::TEXT_COLOR:
@@ -717,58 +739,121 @@ inline bool SimpleTextImplDetails::Succeeded(GLuint object, Stage stage)
 	return return_value;
 }
 
-inline void SimpleTextImplDetails::RenderSymbol(char _symbol, float posX, float posY, int shift)
+inline void SimpleTextImplDetails::ResizeVertexBuffer(size_t newSize)
 {
+	assert(newSize % 4 == 0);
+	if (newSize > m_vertex_buffer_reserved)
+	{
+		uint64_t v = newSize + 1;
+
+		v--;
+		v |= v >> 1U;
+		v |= v >> 2U;
+		v |= v >> 4U;
+		v |= v >> 8U;
+		v |= v >> 16U;
+		v |= v >> 32U;
+		v++;
+
+		uint64_t old_reserved = m_vertex_buffer_reserved;
+		m_vertex_buffer_reserved = static_cast<size_t>(v);
+		m_vertex_buffer = static_cast<uint8_t*>(realloc(m_vertex_buffer, vertex_size * m_vertex_buffer_reserved));
+		m_index_buffer = static_cast<uint16_t*>(realloc(m_index_buffer, sizeof(uint16_t) * m_vertex_buffer_reserved / 4 * 6));
+
+		uint64_t start_index =old_reserved / 4 * 6;
+		for (int i = old_reserved; i < m_vertex_buffer_reserved; i += 4)
+		{
+			m_index_buffer[start_index + 0] = i + 0;
+			m_index_buffer[start_index + 1] = i + 1;
+			m_index_buffer[start_index + 2] = i + 2;
+			m_index_buffer[start_index + 3] = i + 0;
+			m_index_buffer[start_index + 4] = i + 2;
+			m_index_buffer[start_index + 5] = i + 3;
+			start_index += 6;
+		}
+	}
+	m_vertex_buffer_size = newSize;
+}
+
+inline void SimpleTextImplDetails::SubmitSymbol(char _symbol, float posX, float posY, int shift)
+{
+	assert(m_viewport[2] != 0);
+	m_sizeX = 2.0f * static_cast<float>(SYMBOL_WIDTH * m_fontsize) / m_viewport[2];
+	m_sizeY = 2.0f * static_cast<float>(SYMBOL_HEIGHT * m_fontsize) / m_viewport[3];
 	int symbol = (unsigned char)_symbol;
 	int y = symbol / (TEXTURE_SIZE_X / SYMBOL_WIDTH);
 	int x = symbol % (TEXTURE_SIZE_X / SYMBOL_WIDTH);
-	float val[4];
-	val[0] = static_cast<float>(SYMBOL_WIDTH * x) / TEXTURE_SIZE_X;
-	val[1] = static_cast<float>(SYMBOL_HEIGHT * y) / TEXTURE_SIZE_Y;
-	val[2] = static_cast<float>(SYMBOL_WIDTH) / TEXTURE_SIZE_X;
-	val[3] = static_cast<float>(SYMBOL_HEIGHT) / TEXTURE_SIZE_Y;
-	glUniform4fv(m_textureCoordULoc, 1, val);
-	val[0] = shift * m_sizeX - 1.0f + 2.0f * posX / m_viewport[2];
-	val[1] = -2.0f * posY / m_viewport[3] + 1.0f - m_sizeY;
-	val[2] = m_sizeX;
-	val[3] = m_sizeY;
-	glUniform4fv(m_positionULoc, 1, val);
-	glUniform4fv(m_textColorULoc, 1, m_textColor);
-	glUniform4fv(m_backgroundColorULoc, 1, m_backColor);
 
-	glDrawArrays(GL_TRIANGLES, 0, 6);
+	int16_t uv[4] = {
+			static_cast<int16_t>(SYMBOL_WIDTH * x),
+			static_cast<int16_t>(SYMBOL_HEIGHT * y),
+			static_cast<int16_t>(SYMBOL_WIDTH * (x + 1)),
+			static_cast<int16_t>(SYMBOL_HEIGHT * (y + 1))
+	};
+
+	float pos[4] = {
+			shift * m_sizeX - 1.0f + 2.0f * posX / m_viewport[2],
+			-2.0f * posY / m_viewport[3] + 1.0f,
+			shift * m_sizeX - 1.0f + 2.0f * posX / m_viewport[2] + m_sizeX,
+			-2.0f * posY / m_viewport[3] + 1.0f - m_sizeY
+	};
+
+	int ids[] = {0, 1, 0, 3, 2, 3, 2, 1};
+
+	ResizeVertexBuffer(4 + m_vertex_buffer_offset);
+
+	uint8_t* ptr = m_vertex_buffer + m_vertex_buffer_offset * vertex_size;
+
+	for (int i = 0; i < 4; ++i)
+	{
+		memcpy(ptr, pos + ids[2 * i + 0], sizeof(float)); ptr += sizeof(float);
+		memcpy(ptr, pos + ids[2 * i + 1], sizeof(float)); ptr += sizeof(float);
+		memcpy(ptr, uv + ids[2 * i + 0], sizeof(int16_t)); ptr += sizeof(int16_t);
+		memcpy(ptr, uv + ids[2 * i + 1], sizeof(int16_t)); ptr += sizeof(int16_t);
+		memcpy(ptr, m_textColor, sizeof(uint8_t) * 4); ptr += 4 * sizeof(uint8_t);
+		memcpy(ptr, m_backColor, sizeof(uint8_t) * 4); ptr += 4 * sizeof(uint8_t);
+	}
+	m_vertex_buffer_offset += 4;
+	m_vertex_count += 4;
+}
+
+inline void SimpleTextImplDetails::Render()
+{
+	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
+	glBufferData(GL_ARRAY_BUFFER, m_vertex_count * vertex_size, m_vertex_buffer, GL_STREAM_DRAW);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ibo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_vertex_count / 4 * 6 * sizeof(short), m_index_buffer, GL_STREAM_DRAW);
+	StartDraw();
+
+	glDrawElements(GL_TRIANGLES, m_vertex_count / 4 * 6, GL_UNSIGNED_SHORT, 0);
+
+	EndDraw();
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	m_vertex_buffer_offset = 0;
+	m_vertex_count = 0;
 }
 
 inline void SimpleTextImplDetails::CreateVBO()
 {
-	const GLfloat vertices[6][4] = {
-		{ 0.0, 0.0, 0.0, 1.0 },
-		{ 0.0, 1.0, 0.0, 0.0 },
-		{ 1.0, 1.0, 1.0, 0.0 },
-		{ 0.0, 0.0, 0.0, 1.0 },
-		{ 1.0, 1.0, 1.0, 0.0 },
-		{ 1.0, 0.0, 1.0, 1.0 } };
-	
 	glGenBuffers(1, &m_vbo);
-
-	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-	glBufferData(GL_ARRAY_BUFFER, 4 * 6 * sizeof(GLfloat), vertices, GL_STATIC_DRAW);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glGenBuffers(1, &m_ibo);
 }
 
 inline void SimpleTextImplDetails::Free()
 {
 	glDeleteBuffers(1, &m_vbo);
+	glDeleteBuffers(1, &m_ibo);
 	glDeleteProgram(m_shaderprogram);
 	glDeleteShader(m_vertexShader);
 	glDeleteShader(m_fragmentShader);
 	glDeleteTextures(1, &m_texture);
+	free(m_vertex_buffer);
+	free(m_index_buffer);
 }
 
 inline void SimpleTextImplDetails::StartDraw()
 {
-	ApplyTextSize();
-
 	glUseProgram(m_shaderprogram);
 
 	glActiveTexture(GL_TEXTURE0);
@@ -805,9 +890,13 @@ inline void SimpleTextImplDetails::StartDraw()
 
 	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
 	glEnableVertexAttribArray(AttributePosition);
-	glVertexAttribPointer(AttributePosition, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), 0);
+	glVertexAttribPointer(AttributePosition, 2, GL_FLOAT, GL_FALSE, vertex_size, 0);
 	glEnableVertexAttribArray(AttributeTextureCoord);
-	glVertexAttribPointer(AttributeTextureCoord, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)(2 * sizeof(GLfloat)));
+	glVertexAttribPointer(AttributeTextureCoord, 2, GL_UNSIGNED_SHORT, GL_FALSE, vertex_size, (GLvoid*)(2 * sizeof(float)));
+	glEnableVertexAttribArray(AttributeColorF);
+	glVertexAttribPointer(AttributeColorF, 4, GL_UNSIGNED_BYTE, GL_FALSE, vertex_size, (GLvoid*)(2 * sizeof(uint16_t) + 2 * sizeof(float)));
+	glEnableVertexAttribArray(AttributeColorB);
+	glVertexAttribPointer(AttributeColorB, 4, GL_UNSIGNED_BYTE, GL_FALSE, vertex_size, (GLvoid*)(2 * sizeof(uint16_t) + 2 * sizeof(float) + 4 * sizeof(uint8_t)));
 }
 
 inline void SimpleTextImplDetails::EndDraw()
@@ -822,6 +911,8 @@ inline void SimpleTextImplDetails::EndDraw()
 	}
 	glDisableVertexAttribArray(AttributePosition);
 	glDisableVertexAttribArray(AttributeTextureCoord);
+	glDisableVertexAttribArray(AttributeColorF);
+	glDisableVertexAttribArray(AttributeColorB);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
@@ -833,11 +924,16 @@ inline void SimpleTextImplDetails::CreateShaderProgram()
 		"#endif \n"
 		"attribute vec2 in_position; \n"
 		"attribute vec2 in_coord; \n"
+		"attribute vec4 in_colorf; \n"
+		"attribute vec4 in_colorb; \n"
 		"varying vec2 out_coord; \n"
-		"uniform vec4 posoffset; \n"
+		"varying vec4 out_colorf; \n"
+		"varying vec4 out_colorb; \n"
 		"void main() {\n"
-		"	gl_Position = vec4(vec3(posoffset.xy + posoffset.zw * in_position, 0.0), 1.0); \n"
-		"	out_coord = in_coord; \n"
+		"	gl_Position = vec4(in_position, 0.0, 1.0); \n"
+		"	out_coord = in_coord / vec2(128, 256); \n"
+		"	out_colorf = in_colorf / 255.0; \n"
+		"	out_colorb = in_colorb / 255.0; \n"
 		"}\n";
 
 	const GLchar* fShaderCode =
@@ -845,18 +941,12 @@ inline void SimpleTextImplDetails::CreateShaderProgram()
 		"precision mediump float; \n"
 		"#endif \n"
 		"varying vec2 out_coord; \n"
-		"uniform sampler2D text; \n" 
-		"uniform vec4 textoffset; \n"
-		"uniform vec4 textColor; \n"
-		"uniform vec4 backgroundColor; \n"
+		"varying vec4 out_colorf; \n"
+		"varying vec4 out_colorb; \n"
+		"uniform sampler2D text; \n"
 		"void main() {\n"
-		"	vec2 corrected = out_coord * textoffset.zw; \n"
-		"	corrected = max(corrected, vec2(0.5) / vec2(128.0, 256.0)); \n"
-		"	corrected = min(corrected, textoffset.zw - vec2(0.5) / vec2(128.0, 256.0)); \n"
-		"	vec2 baseCoord = textoffset.xy + corrected; \n"
-		"	float c = float(texture2D(text, baseCoord).r > 0.4); \n"
-		//"	float c = texture2D(text, baseCoord); \n"
-		"	gl_FragColor = mix(backgroundColor, textColor, vec4(c)); \n"
+		"	float c = float(texture2D(text, out_coord).r > 0.4); \n"
+		"	gl_FragColor = mix(out_colorb, out_colorf, vec4(c)); \n"
 		"}\n";
 	
 	m_vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -891,16 +981,14 @@ inline void SimpleTextImplDetails::CreateShaderProgram()
 inline void SimpleTextImplDetails::BindUniforms()
 {
 	m_textureSamperULoc = glGetUniformLocation(m_shaderprogram, "text");
-	m_textureCoordULoc = glGetUniformLocation(m_shaderprogram, "textoffset");
-	m_positionULoc = glGetUniformLocation(m_shaderprogram, "posoffset");
-	m_textColorULoc = glGetUniformLocation(m_shaderprogram, "textColor");
-	m_backgroundColorULoc = glGetUniformLocation(m_shaderprogram, "backgroundColor");
 }
 
 inline void SimpleTextImplDetails::BindAttributes()
 {
 	glBindAttribLocation(m_shaderprogram, AttributePosition, "in_position");
 	glBindAttribLocation(m_shaderprogram, AttributeTextureCoord, "in_coord");
+	glBindAttribLocation(m_shaderprogram, AttributeColorF, "in_colorf");
+	glBindAttribLocation(m_shaderprogram, AttributeColorB, "in_colorb");
 }
 
 inline void SimpleTextImplDetails::CreateFontTexture()

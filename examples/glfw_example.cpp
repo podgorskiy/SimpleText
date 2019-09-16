@@ -37,95 +37,99 @@ int main(void)
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		simpleText->ResetFont();
-		simpleText->RenderLabel("Example of using SimpleText library", 250, 10);
+		simpleText->SetCurrentViewport();
+
+		simpleText->Label("Example of using SimpleText library", 250, 10);
 
 		simpleText->ResetFont();
-		simpleText->RenderLabel("Example of using SimpleText library", 250, 10);
+		simpleText->Label("Example of using SimpleText library", 250, 10);
 
 		simpleText->SetTextSize(SimpleText::SIZE_32);
-		simpleText->RenderLabel("Variable font size", 10, 50);
+		simpleText->Label("Variable font size", 10, 50);
 
 		simpleText->SetTextSize(SimpleText::SIZE_64);
-		simpleText->RenderLabel("Variable font size", 10, 80);
+		simpleText->Label("Variable font size", 10, 80);
 
 		simpleText->SetTextSize(SimpleText::SIZE_16);
 		simpleText->SetColor(SimpleText::TEXT_COLOR, 0, 100, 255, 255);
-		simpleText->RenderLabel("Variable colors", 10, 160);
+		simpleText->Label("Variable colors", 10, 160);
 
 		simpleText->SetColorf(SimpleText::TEXT_COLOR, 1.0f, 0.1f, 0.7f);
-		simpleText->RenderLabel("Variable colors", 150, 160);
+		simpleText->Label("Variable colors", 150, 160);
 
 		simpleText->SetColorf(SimpleText::TEXT_COLOR, 0.2f, 0.4f, 0.7f);
 		simpleText->SetColorf(SimpleText::BACKGROUND_COLOR, 0.3f, 0.1f, 0.2f);
-		simpleText->RenderLabel("Variable colors", 290, 160);
+		simpleText->Label("Variable colors", 290, 160);
 
 		simpleText->SetColorf(SimpleText::TEXT_COLOR, 0.8f, 0.1f, 0.4f);
 		simpleText->SetColorf(SimpleText::BACKGROUND_COLOR, 0.2f, 0.7f, 0.5f);
-		simpleText->RenderLabel("Variable colors      ", 430, 160);
+		simpleText->Label("Variable colors      ", 430, 160);
 
 		simpleText->SetColorf(SimpleText::TEXT_COLOR, 0.2f, 0.3f, 0.3f, 0.9f);
 		simpleText->SetColorf(SimpleText::BACKGROUND_COLOR, 0.7f, 0.1f, 0.2f, 0.3f);
 		simpleText->EnableBlending(true);
-		simpleText->RenderLabel("Alpha blending", 570, 160);
+		simpleText->Label("Alpha blending", 570, 160);
 
 		simpleText->ResetFont();
 
-		simpleText->RenderLabel("Standard VGA colors:", 10, 180);
+		simpleText->Label("Standard VGA colors:", 10, 180);
 
 		simpleText->SetColor(SimpleText::TEXT_COLOR, SimpleText::RED);
-		simpleText->RenderLabel("RED", 10, 200);
+		simpleText->Label("RED", 10, 200);
 
 		simpleText->SetColor(SimpleText::TEXT_COLOR, SimpleText::GREEN);
-		simpleText->RenderLabel("GREEN", 80, 200);
+		simpleText->Label("GREEN", 80, 200);
 
 		simpleText->SetColor(SimpleText::TEXT_COLOR, SimpleText::YELLOW);
-		simpleText->RenderLabel("YELLOW", 150, 200);
+		simpleText->Label("YELLOW", 150, 200);
 
 		simpleText->SetColor(SimpleText::TEXT_COLOR, SimpleText::BLUE);
-		simpleText->RenderLabel("BLUE", 220, 200);
+		simpleText->Label("BLUE", 220, 200);
 
 		simpleText->SetColor(SimpleText::TEXT_COLOR, SimpleText::MAGENTA);
-		simpleText->RenderLabel("MAGENTA", 290, 200);
+		simpleText->Label("MAGENTA", 290, 200);
 
 		simpleText->SetColor(SimpleText::TEXT_COLOR, SimpleText::CYAN);
-		simpleText->RenderLabel("CYAN", 360, 200);
+		simpleText->Label("CYAN", 360, 200);
 
 		simpleText->SetColor(SimpleText::TEXT_COLOR, SimpleText::WHITE);
-		simpleText->RenderLabel("WHITE", 430, 200);
+		simpleText->Label("WHITE", 430, 200);
 
 
 		simpleText->SetColor(SimpleText::TEXT_COLOR, SimpleText::RED, SimpleText::BOLD);
-		simpleText->RenderLabel("RED", 10, 220);
+		simpleText->Label("RED", 10, 220);
 
 		simpleText->SetColor(SimpleText::TEXT_COLOR, SimpleText::GREEN, SimpleText::BOLD);
-		simpleText->RenderLabel("GREEN", 80, 220);
+		simpleText->Label("GREEN", 80, 220);
 
 		simpleText->SetColor(SimpleText::TEXT_COLOR, SimpleText::YELLOW, SimpleText::BOLD);
-		simpleText->RenderLabel("YELLOW", 150, 220);
+		simpleText->Label("YELLOW", 150, 220);
 
 		simpleText->SetColor(SimpleText::TEXT_COLOR, SimpleText::BLUE, SimpleText::BOLD);
-		simpleText->RenderLabel("BLUE", 220, 220);
+		simpleText->Label("BLUE", 220, 220);
 
 		simpleText->SetColor(SimpleText::TEXT_COLOR, SimpleText::MAGENTA, SimpleText::BOLD);
-		simpleText->RenderLabel("MAGENTA", 290, 220);
+		simpleText->Label("MAGENTA", 290, 220);
 
 		simpleText->SetColor(SimpleText::TEXT_COLOR, SimpleText::CYAN, SimpleText::BOLD);
-		simpleText->RenderLabel("CYAN", 360, 220);
+		simpleText->Label("CYAN", 360, 220);
 
 		simpleText->SetColor(SimpleText::TEXT_COLOR, SimpleText::WHITE, SimpleText::BOLD);
-		simpleText->RenderLabel("WHITE", 430, 220);
+		simpleText->Label("WHITE", 430, 220);
 
 		simpleText->ResetFont();
 
-		simpleText->RenderLabel("Supports ANSI escape sequences for setting colors.", 10, 260);
+		simpleText->Label("Supports ANSI escape sequences for setting colors.", 10, 260);
 
-		simpleText->RenderLabel("Thus, you can use codes 30+i to specify foreground color, 40+i to specify background color", 10, 280);
+		simpleText->Label("Thus, you can use codes 30+i to specify foreground color, 40+i to specify background color", 10, 280);
 
-		simpleText->RenderLabel("For example, let's take this string:", 10, 300);
+		simpleText->Label("For example, let's take this string:", 10, 300);
 
-		simpleText->RenderLabel("\\033[32mGreen \\033[1;31mBold red \\033[22mNormal red \\033[1;34;47m Bold blue on white \\033[0mReset", 10, 320);
+		simpleText->Label("\\033[32mGreen \\033[1;31mBold red \\033[22mNormal red \\033[1;34;47m Bold blue on white \\033[0mReset", 10, 320);
 
-		simpleText->RenderLabel("\033[32mGreen \033[1;31mBold red \033[22mNormal red \033[1;34;47m Bold blue on white \033[0mReset", 10, 340);
+		simpleText->Label("\033[32mGreen \033[1;31mBold red \033[22mNormal red \033[1;34;47m Bold blue on white \033[0mReset", 10, 340);
+
+		simpleText->Render();
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
