@@ -24,6 +24,9 @@ SOFTWARE.
 */
 
 #pragma once
+#include <stdio.h>
+
+
 class SimpleTextImplDetails;
 
 /*	Public API. */
@@ -104,7 +107,7 @@ private:
 
 
 #ifndef SIMPLE_TEXT_PRINT_ERROR
-#define SIMPLE_TEXT_PRINT_ERROR(...) printf(__VA_ARGS__);
+#define SIMPLE_TEXT_PRINT_ERROR(...) printf(__VA_ARGS__)
 #endif
 
 class SimpleTextImplDetails
@@ -186,7 +189,7 @@ public:
 	void ResetAnsiColor();
 	void DecodeColor(SimpleText::Color color, SimpleText::NormalBold bold, unsigned char& r, unsigned char& g, unsigned char& b);
 	void EnableBlending(bool enabled);
-	bool Failed(GLuint object, Stage stage);
+	bool Succeeded(GLuint object, Stage stage);
 	void SetColorf(SimpleText::ForegroundBackground type, float r, float g, float b, float a);
 	void SetTextSize(SimpleText::FontSize size);
 	void RenderLabel(const char* text, int posX, int posY);
@@ -665,30 +668,53 @@ inline void SimpleTextImplDetails::ApplyTextSize()
 	m_sizeY = 2.0f * static_cast<float>(SYMBOL_HEIGHT * m_fontsize) / m_viewport[3];
 }
 
-inline bool SimpleTextImplDetails::Failed(GLuint object, Stage stage)
+inline bool SimpleTextImplDetails::Succeeded(GLuint object, Stage stage)
 {
 	GLint maxLength = 0;
 	GLint status = GL_FALSE;
+	char* infoLog = nullptr;
 	switch (stage)
 	{
 	case COMPILE:
 		glGetShaderiv(object, GL_COMPILE_STATUS, &status);
 		glGetShaderiv(object, GL_INFO_LOG_LENGTH, &maxLength);
+		if (maxLength > 1)
+		{
+			infoLog = new char[static_cast<GLuint>(maxLength)];
+			glGetShaderInfoLog(object, maxLength, &maxLength, infoLog);
+		}
 		break;
 	case LINK:
-		glGetShaderiv(object, GL_LINK_STATUS, &status);
-		glGetShaderiv(object, GL_INFO_LOG_LENGTH, &maxLength);
+		glGetProgramiv(object, GL_LINK_STATUS, &status);
+		glGetProgramiv(object, GL_INFO_LOG_LENGTH, &maxLength);
+		if (maxLength > 1)
+		{
+			infoLog = new char[static_cast<GLuint>(maxLength)];
+			glGetProgramInfoLog(object, maxLength, &maxLength, infoLog);
+		}
 		break;
 	}
-	if (status == GL_FALSE)
+	bool return_value = true;
+	if (maxLength > 1)
 	{
-		char* infoLog = new char[static_cast<GLuint>(maxLength)];
-		glGetShaderInfoLog(object, maxLength, &maxLength, infoLog);
+		if (status == GL_FALSE)
+		{
+			return_value = false;
+			SIMPLE_TEXT_PRINT_ERROR("GLSL Error\n");
+		}
+		else
+		{
+			SIMPLE_TEXT_PRINT_ERROR("GLSL Warning\n");
+		}
 		SIMPLE_TEXT_PRINT_ERROR("%s\n", infoLog);
-		delete[] infoLog;
-		return true;
 	}
-	return false;
+	else if (status == GL_FALSE)
+	{
+		return_value = false;
+		SIMPLE_TEXT_PRINT_ERROR("Error without info log\n");
+	}
+	delete[] infoLog;
+	return return_value;
 }
 
 inline void SimpleTextImplDetails::RenderSymbol(char _symbol, float posX, float posY, int shift)
@@ -802,7 +828,9 @@ inline void SimpleTextImplDetails::EndDraw()
 inline void SimpleTextImplDetails::CreateShaderProgram()
 {
 	const GLchar* vShaderCode =
-		"precision highp float; \n"
+		"#ifdef GL_ES \n"
+        "precision mediump float; \n"
+		"#endif \n"
 		"attribute vec2 in_position; \n"
 		"attribute vec2 in_coord; \n"
 		"varying vec2 out_coord; \n"
@@ -813,7 +841,9 @@ inline void SimpleTextImplDetails::CreateShaderProgram()
 		"}\n";
 
 	const GLchar* fShaderCode =
-		"precision highp float; \n"
+		"#ifdef GL_ES \n"
+		"precision mediump float; \n"
+		"#endif \n"
 		"varying vec2 out_coord; \n"
 		"uniform sampler2D text; \n" 
 		"uniform vec4 textoffset; \n"
@@ -830,21 +860,19 @@ inline void SimpleTextImplDetails::CreateShaderProgram()
 		"}\n";
 	
 	m_vertexShader = glCreateShader(GL_VERTEX_SHADER);
-	// printf("m_vertexShader %d\n", m_vertexShader);
 	glShaderSource(m_vertexShader, 1, &vShaderCode, 0);
 	glCompileShader(m_vertexShader);
 
-	if (Failed(m_vertexShader, COMPILE))
+	if (!Succeeded(m_vertexShader, COMPILE))
 	{
 		return;
 	}
 
 	m_fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-	// printf("m_fragmentShader %d\n", m_fragmentShader);
 	glShaderSource(m_fragmentShader, 1, &fShaderCode, 0);
 	glCompileShader(m_fragmentShader);
 
-	if (Failed(m_fragmentShader, COMPILE))
+	if (!Succeeded(m_fragmentShader, COMPILE))
 	{
 		return;
 	}
@@ -854,7 +882,7 @@ inline void SimpleTextImplDetails::CreateShaderProgram()
 	glAttachShader(m_shaderprogram, m_fragmentShader);
 	glLinkProgram(m_shaderprogram);
 
-	if (Failed(m_shaderprogram, LINK))
+	if (!Succeeded(m_shaderprogram, LINK))
 	{
 		return;
 	}

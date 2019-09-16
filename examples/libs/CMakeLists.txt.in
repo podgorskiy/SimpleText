@@ -1,0 +1,27 @@
+cmake_minimum_required(VERSION 2.8)
+include(ExternalProject)
+find_package(Git REQUIRED)
+
+
+ExternalProject_Add(
+        glfw PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/examples
+        GIT_REPOSITORY https://github.com/skaslev/gl3w.git
+        SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/examples/libs/gl3w
+        BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/examples/gl3w-build
+        TMP_DIR ${CMAKE_CURRENT_BINARY_DIR}/examples/gl3w-tmp
+        STAMP_DIR ${CMAKE_CURRENT_BINARY_DIR}/examples/gl3w-stamp
+        CONFIGURE_COMMAND ""
+        BUILD_COMMAND ""
+        INSTALL_COMMAND ""
+)
+ExternalProject_Add(
+        gl3w PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/examples
+        GIT_REPOSITORY https://github.com/glfw/glfw.git
+        SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/examples/libs/glfw
+        BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/examples/glfw-build
+        TMP_DIR ${CMAKE_CURRENT_BINARY_DIR}/examples/glfw-tmp
+        STAMP_DIR ${CMAKE_CURRENT_BINARY_DIR}/examples/glfw-stamp
+        CONFIGURE_COMMAND ""
+        BUILD_COMMAND ""
+        INSTALL_COMMAND ""
+)
