@@ -93,8 +93,6 @@ public:
 
 	void ResetFont();
 
-	void SetCurrentViewport();
-
 	void Render();
 
 	// API for symbol by symbol rendering
@@ -199,7 +197,6 @@ public:
 	void BindAttributes();
 	void BindUniforms();
 	unsigned char* GenerateFontBitmap();
-	void ApplyTextSize();
 	void SetColor(SimpleText::ForegroundBackground type, SimpleText::Color color, SimpleText::NormalBold bold);
 	void GetColor(SimpleText::ForegroundBackground type, SimpleText::Color &color, SimpleText::NormalBold &bold);
 	void ResetAnsiColor();
@@ -298,11 +295,6 @@ inline void SimpleText::Label(const char* text, int posX, int posY)
 inline void SimpleText::Render()
 {
 	m_impl->Render();
-}
-
-inline void SimpleText::SetCurrentViewport()
-{
-	m_impl->ApplyTextSize();
 }
 
 inline void SimpleText::SubmitSymbol(char s, int x, int y)
@@ -683,10 +675,6 @@ inline void SimpleTextImplDetails::SetTextSize(SimpleText::FontSize size)
 	m_fontsize = size;
 	m_sizeX = SYMBOL_WIDTH * m_fontsize;
 	m_sizeY = SYMBOL_HEIGHT * m_fontsize;
-}
-
-inline void SimpleTextImplDetails::ApplyTextSize()
-{
 }
 
 inline bool SimpleTextImplDetails::Succeeded(GLuint object, Stage stage)
