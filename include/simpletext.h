@@ -116,7 +116,7 @@ class SimpleTextImplDetails
 {
 	enum FontProperties
 	{
-		TEXTURE_SIZE_X = 128,
+		TEXTURE_SIZE_X = 256,
 		TEXTURE_SIZE_Y = 256,
 		SYMBOL_COUNT = 256,
 		SYMBOL_HEIGHT = 16,
@@ -140,7 +140,7 @@ class SimpleTextImplDetails
 	enum
 	{
 		min_size = 0x1000,
-		vertex_size = (sizeof(int16_t) * 2 + sizeof(float) * 2 + sizeof(uint8_t) * 8),
+		vertex_size = (sizeof(int16_t) * 2 + sizeof(int16_t) * 2 + sizeof(uint8_t) * 8),
 	};
 
 	class ANSI_EscapeCodeDecoder
@@ -225,7 +225,8 @@ private:
 	GLuint m_fragmentShader;
 	GLuint m_shaderprogram;
 
-	GLint m_textureSamperULoc;
+	GLint u_texture;
+	GLint u_viewport;
 
 	uint8_t* m_vertex_buffer;
 	uint16_t* m_index_buffer;
@@ -235,8 +236,8 @@ private:
 	size_t m_vertex_count;
 
 	SimpleText::FontSize m_fontsize;
-	float m_sizeX;
-	float m_sizeY;
+	int m_sizeX;
+	int m_sizeY;
 	GLint m_viewport[4];
 
 	uint8_t m_textColor[4];
@@ -680,14 +681,12 @@ inline void SimpleTextImplDetails::DecodeColor(SimpleText::Color color, SimpleTe
 inline void SimpleTextImplDetails::SetTextSize(SimpleText::FontSize size)
 {
 	m_fontsize = size;
+	m_sizeX = SYMBOL_WIDTH * m_fontsize;
+	m_sizeY = SYMBOL_HEIGHT * m_fontsize;
 }
 
 inline void SimpleTextImplDetails::ApplyTextSize()
-{	
-	glGetIntegerv(GL_VIEWPORT, m_viewport);
-
-	m_sizeX = 2.0f * static_cast<float>(SYMBOL_WIDTH * m_fontsize) / m_viewport[2];
-	m_sizeY = 2.0f * static_cast<float>(SYMBOL_HEIGHT * m_fontsize) / m_viewport[3];
+{
 }
 
 inline bool SimpleTextImplDetails::Succeeded(GLuint object, Stage stage)
@@ -777,25 +776,25 @@ inline void SimpleTextImplDetails::ResizeVertexBuffer(size_t newSize)
 
 inline void SimpleTextImplDetails::SubmitSymbol(char _symbol, float posX, float posY, int shift)
 {
-	assert(m_viewport[2] != 0);
-	m_sizeX = 2.0f * static_cast<float>(SYMBOL_WIDTH * m_fontsize) / m_viewport[2];
-	m_sizeY = 2.0f * static_cast<float>(SYMBOL_HEIGHT * m_fontsize) / m_viewport[3];
+	m_sizeX = SYMBOL_WIDTH * m_fontsize;
+	m_sizeY = SYMBOL_HEIGHT * m_fontsize;
 	int symbol = (unsigned char)_symbol;
-	int y = symbol / (TEXTURE_SIZE_X / SYMBOL_WIDTH);
-	int x = symbol % (TEXTURE_SIZE_X / SYMBOL_WIDTH);
+	int y = symbol / (TEXTURE_SIZE_X / 2 / SYMBOL_WIDTH);
+	int x = symbol % (TEXTURE_SIZE_X / 2 / SYMBOL_WIDTH);
+	x *= 2;
 
 	int16_t uv[4] = {
-			static_cast<int16_t>(SYMBOL_WIDTH * x),
-			static_cast<int16_t>(SYMBOL_HEIGHT * y),
-			static_cast<int16_t>(SYMBOL_WIDTH * (x + 1)),
-			static_cast<int16_t>(SYMBOL_HEIGHT * (y + 1))
+			static_cast<int16_t>(4 * SYMBOL_WIDTH * x),
+			static_cast<int16_t>(4 * SYMBOL_HEIGHT * y),
+			static_cast<int16_t>(4 * SYMBOL_WIDTH * (x + 1)),
+			static_cast<int16_t>(4 * SYMBOL_HEIGHT * (y + 1))
 	};
 
-	float pos[4] = {
-			shift * m_sizeX - 1.0f + 2.0f * posX / m_viewport[2],
-			-2.0f * posY / m_viewport[3] + 1.0f,
-			shift * m_sizeX - 1.0f + 2.0f * posX / m_viewport[2] + m_sizeX,
-			-2.0f * posY / m_viewport[3] + 1.0f - m_sizeY
+	int16_t pos[4] = {
+			static_cast<int16_t>(4 * (shift * m_sizeX + posX)),
+			static_cast<int16_t>(4 * posY),
+			static_cast<int16_t>(4 * (shift * m_sizeX + posX + m_sizeX)),
+			static_cast<int16_t>(4 * (posY + m_sizeY))
 	};
 
 	int ids[] = {0, 1, 0, 3, 2, 3, 2, 1};
@@ -806,8 +805,8 @@ inline void SimpleTextImplDetails::SubmitSymbol(char _symbol, float posX, float 
 
 	for (int i = 0; i < 4; ++i)
 	{
-		memcpy(ptr, pos + ids[2 * i + 0], sizeof(float)); ptr += sizeof(float);
-		memcpy(ptr, pos + ids[2 * i + 1], sizeof(float)); ptr += sizeof(float);
+		memcpy(ptr, pos + ids[2 * i + 0], sizeof(int16_t)); ptr += sizeof(int16_t);
+		memcpy(ptr, pos + ids[2 * i + 1], sizeof(int16_t)); ptr += sizeof(int16_t);
 		memcpy(ptr, uv + ids[2 * i + 0], sizeof(int16_t)); ptr += sizeof(int16_t);
 		memcpy(ptr, uv + ids[2 * i + 1], sizeof(int16_t)); ptr += sizeof(int16_t);
 		memcpy(ptr, m_textColor, sizeof(uint8_t) * 4); ptr += 4 * sizeof(uint8_t);
@@ -860,7 +859,10 @@ inline void SimpleTextImplDetails::StartDraw()
 	glBindTexture(GL_TEXTURE_2D, m_texture);
 
 	int i = 0;
-	glUniform1iv(m_textureSamperULoc, 1, &i);
+	glUniform1iv(u_texture, 1, &i);
+
+	glGetIntegerv(GL_VIEWPORT, m_viewport);
+	glUniform2i(u_viewport, m_viewport[2], m_viewport[3]);
 
 	m_backUpBlendingState = glIsEnabled(GL_BLEND);
 	if (m_blendingEnabled)
@@ -890,13 +892,13 @@ inline void SimpleTextImplDetails::StartDraw()
 
 	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
 	glEnableVertexAttribArray(AttributePosition);
-	glVertexAttribPointer(AttributePosition, 2, GL_FLOAT, GL_FALSE, vertex_size, 0);
+	glVertexAttribPointer(AttributePosition, 2, GL_UNSIGNED_SHORT, GL_FALSE, vertex_size, 0);
 	glEnableVertexAttribArray(AttributeTextureCoord);
-	glVertexAttribPointer(AttributeTextureCoord, 2, GL_UNSIGNED_SHORT, GL_FALSE, vertex_size, (GLvoid*)(2 * sizeof(float)));
+	glVertexAttribPointer(AttributeTextureCoord, 2, GL_UNSIGNED_SHORT, GL_FALSE, vertex_size, (GLvoid*)(2 * sizeof(int16_t)));
 	glEnableVertexAttribArray(AttributeColorF);
-	glVertexAttribPointer(AttributeColorF, 4, GL_UNSIGNED_BYTE, GL_FALSE, vertex_size, (GLvoid*)(2 * sizeof(uint16_t) + 2 * sizeof(float)));
+	glVertexAttribPointer(AttributeColorF, 4, GL_UNSIGNED_BYTE, GL_FALSE, vertex_size, (GLvoid*)(4 * sizeof(uint16_t)));
 	glEnableVertexAttribArray(AttributeColorB);
-	glVertexAttribPointer(AttributeColorB, 4, GL_UNSIGNED_BYTE, GL_FALSE, vertex_size, (GLvoid*)(2 * sizeof(uint16_t) + 2 * sizeof(float) + 4 * sizeof(uint8_t)));
+	glVertexAttribPointer(AttributeColorB, 4, GL_UNSIGNED_BYTE, GL_FALSE, vertex_size, (GLvoid*)(4 * sizeof(uint16_t)+ 4 * sizeof(uint8_t)));
 }
 
 inline void SimpleTextImplDetails::EndDraw()
@@ -926,12 +928,14 @@ inline void SimpleTextImplDetails::CreateShaderProgram()
 		"attribute vec2 in_coord; \n"
 		"attribute vec4 in_colorf; \n"
 		"attribute vec4 in_colorb; \n"
+		"uniform ivec2 u_viewport; \n"
 		"varying vec2 out_coord; \n"
 		"varying vec4 out_colorf; \n"
 		"varying vec4 out_colorb; \n"
 		"void main() {\n"
-		"	gl_Position = vec4(in_position, 0.0, 1.0); \n"
-		"	out_coord = in_coord / vec2(128, 256); \n"
+        "   vec2 pos = 2.0 * in_position / vec2(u_viewport * 4) - vec2(1.0);"
+		"	gl_Position = vec4(pos.x, -pos.y, 0.0, 1.0); \n"
+		"	out_coord = in_coord / vec2(256.0, 256.0) / 4.0; \n"
 		"	out_colorf = in_colorf / 255.0; \n"
 		"	out_colorb = in_colorb / 255.0; \n"
 		"}\n";
@@ -980,7 +984,8 @@ inline void SimpleTextImplDetails::CreateShaderProgram()
 
 inline void SimpleTextImplDetails::BindUniforms()
 {
-	m_textureSamperULoc = glGetUniformLocation(m_shaderprogram, "text");
+	u_texture = glGetUniformLocation(m_shaderprogram, "text");
+	u_viewport = glGetUniformLocation(m_shaderprogram, "u_viewport");
 }
 
 inline void SimpleTextImplDetails::BindAttributes()
@@ -1280,14 +1285,16 @@ inline unsigned char* SimpleTextImplDetails::GenerateFontBitmap()
 	{
 		for (unsigned int j = 0; j < TEXTURE_SIZE_X; j++)
 		{
-			unsigned int x = j >> 3;
-			unsigned int y = i >> 4;
+			unsigned int x = j >> 3U;
+			if (x % 2 == 1)
+				continue;
+			unsigned int y = i >> 4U;
 			unsigned char v = 0;
-			unsigned int pos = y * TEXTURE_SIZE_X / SYMBOL_WIDTH + x;
-			unsigned int py = i - (y << 4);
-			unsigned int px = j - (x << 3);
+			unsigned int pos = y * TEXTURE_SIZE_X / 2 / SYMBOL_WIDTH + x / 2;
+			unsigned int py = i & 0b00001111U;
+			unsigned int px = j & 0b00000111U;
 
-			unsigned char m = vgaFont[pos * SYMBOL_HEIGHT + py] & (1 << px);
+			unsigned char m = vgaFont[pos * SYMBOL_HEIGHT + py] & (1U << px);
 			v = static_cast<unsigned char>((m == 0 ? 0x00 : 0xff));
 
 			buff[i * TEXTURE_SIZE_X + j] = v;
