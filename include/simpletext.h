@@ -780,9 +780,9 @@ inline void SimpleTextImplDetails::SubmitSymbol(char _symbol, float posX, float 
 
 	int16_t pos[4] = {
 			static_cast<int16_t>(4 * (shift * m_sizeX + posX)),
-			static_cast<int16_t>(4 * posY),
+			static_cast<int16_t>(4 * (posY - m_sizeY)),
 			static_cast<int16_t>(4 * (shift * m_sizeX + posX + m_sizeX)),
-			static_cast<int16_t>(4 * (posY + m_sizeY))
+			static_cast<int16_t>(4 * (posY))
 	};
 
 	int ids[] = {0, 1, 0, 3, 2, 3, 2, 1};
@@ -880,7 +880,7 @@ inline void SimpleTextImplDetails::StartDraw()
 
 	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
 	glEnableVertexAttribArray(AttributePosition);
-	glVertexAttribPointer(AttributePosition, 2, GL_UNSIGNED_SHORT, GL_FALSE, vertex_size, 0);
+	glVertexAttribPointer(AttributePosition, 2, GL_SHORT, GL_FALSE, vertex_size, 0);
 	glEnableVertexAttribArray(AttributeTextureCoord);
 	glVertexAttribPointer(AttributeTextureCoord, 2, GL_UNSIGNED_SHORT, GL_FALSE, vertex_size, (GLvoid*)(2 * sizeof(int16_t)));
 	glEnableVertexAttribArray(AttributeColorF);
