@@ -51,6 +51,13 @@ public:
 		SIZE_192,
 	};
 
+	enum Alignment
+	{
+		LEFT,
+		CENTER,
+		RIGHT
+	};
+
 	enum ForegroundBackground
 	{
 		TEXT_COLOR,
@@ -80,7 +87,7 @@ public:
 
 	~SimpleText();
 
-	void Label(const char* text, int posX, int posY);
+	void Label(const char* text, int posX, int posY, Alignment a=LEFT);
 
 	void SetColor(ForegroundBackground type, Color color, NormalBold bold = NORMAL);
 
@@ -126,7 +133,7 @@ class SimpleTextImplDetails
 		COMPILE,
 		LINK,
 	};
-	
+
 	enum Attributes
 	{
 		AttributePosition = 0,
@@ -205,7 +212,7 @@ public:
 	bool Succeeded(GLuint object, Stage stage);
 	void SetColor(SimpleText::ForegroundBackground type, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 	void SetTextSize(SimpleText::FontSize size);
-	void Label(const char* text, int posX, int posY);
+	void Label(const char* text, int posX, int posY, SimpleText::Alignment a);
 	void SubmitSymbol(char symbol, float posX, float posY, int shift);
 
 	void Render();
@@ -287,9 +294,9 @@ inline void SimpleText::EnableBlending(bool enabled)
 	m_impl->EnableBlending(enabled);
 }
 
-inline void SimpleText::Label(const char* text, int posX, int posY)
+inline void SimpleText::Label(const char* text, int posX, int posY, SimpleText::Alignment a)
 {
-	m_impl->Label(text, posX, posY);
+	m_impl->Label(text, posX, posY, a);
 }
 
 inline void SimpleText::Render()
@@ -545,13 +552,16 @@ inline bool SimpleTextImplDetails::ANSI_EscapeCodeDecoder::DecodeEscapeCode(cons
 	return false;
 }
 
-inline void SimpleTextImplDetails::Label(const char* text, int posX, int posY)
+inline void SimpleTextImplDetails::Label(const char* text, int posX, int posY, SimpleText::Alignment a)
 {
 	const char* begin = text;
 	const char* end = begin;
 	for (; *end != '\0';++end);
 
+	int offset = m_vertex_buffer_offset;
+
 	int pos = 0;
+	int symbol_size = SYMBOL_WIDTH * m_fontsize;
 	for (const char* it = begin; it != end;)
 	{
 		char symbol = '\0';
@@ -560,6 +570,19 @@ inline void SimpleTextImplDetails::Label(const char* text, int posX, int posY)
 			SubmitSymbol(symbol, static_cast<float>(posX), static_cast<float>(posY), pos);
 			++pos;
 		}
+	}
+	switch(a)
+	{
+		case SimpleText::LEFT: return;
+		case SimpleText::CENTER: pos /= 2; break;
+		case SimpleText::RIGHT: break;
+	}
+
+	uint8_t* ptr = m_vertex_buffer + offset * vertex_size;
+	for (int i = offset; i < m_vertex_buffer_offset; ++i)
+	{
+		*(int16_t*)(ptr + 0) -= 4 * symbol_size * pos;
+		ptr += vertex_size;
 	}
 }
 
