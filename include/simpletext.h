@@ -1,35 +1,29 @@
 /*
-The MIT License (MIT)
-
-Copyright (c) 2015 Stanislav Podgorskiy (Pidhorskyi)
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-*/
+ The MIT License (MIT)
+ 
+ Copyright (c) 2015 Stanislav Podgorskiy (Pidhorskyi)
+ 
+ Permission is hereby granted, free of charge, to any person obtaining a copy
+ of this software and associated documentation files (the "Software"), to deal
+ in the Software without restriction, including without limitation the rights
+ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ copies of the Software, and to permit persons to whom the Software is
+ furnished to do so, subject to the following conditions:
+ 
+ The above copyright notice and this permission notice shall be included in all
+ copies or substantial portions of the Software.
+ 
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ SOFTWARE.
+ 
+ */
 
 #pragma once
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <assert.h>
-
-
 class SimpleTextImplDetails;
 
 /*	Public API. */
@@ -50,20 +44,18 @@ public:
 		SIZE_176,
 		SIZE_192,
 	};
-
 	enum Alignment
 	{
 		LEFT,
 		CENTER,
 		RIGHT
 	};
-
 	enum ForegroundBackground
 	{
 		TEXT_COLOR,
 		BACKGROUND_COLOR
 	};
-
+	
 	enum Color
 	{
 		BLACK,
@@ -76,34 +68,33 @@ public:
 		WHITE,
 		COLOR_COUNT
 	};
-
+	
 	enum NormalBold
 	{
 		NORMAL,
 		BOLD
 	};
-
+	
 	SimpleText();
-
+	
 	~SimpleText();
-
-	void Label(const char* text, int posX, int posY, Alignment a=LEFT);
-
+	
+	void RenderLabel(const char* text, int posX, int posY, Alignment a=LEFT);
+	
 	void SetColor(ForegroundBackground type, Color color, NormalBold bold = NORMAL);
-
-	void SetColor(ForegroundBackground type, uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255);
+	
+	void SetColor(ForegroundBackground type, unsigned char r, unsigned char g, unsigned char b, unsigned char a = 255);
+	
 	void SetColorf(ForegroundBackground type, float r, float g, float b, float a = 1.0f);
-
+	
 	void SetTextSize(FontSize size);
-
+	
+	void SetBackgroundColor(unsigned char r, unsigned char g, unsigned char b, unsigned char a);
+	
 	void EnableBlending(bool enabled);
-
+	
 	void ResetFont();
-
-	void Render();
-
-	// API for symbol by symbol rendering
-	void SubmitSymbol(char s, int x, int y);
+	
 private:
 	friend class SimpleTextImplDetails;
 	SimpleTextImplDetails* m_impl;
@@ -114,14 +105,14 @@ private:
 
 
 #ifndef SIMPLE_TEXT_PRINT_ERROR
-#define SIMPLE_TEXT_PRINT_ERROR(...) printf(__VA_ARGS__)
+#define SIMPLE_TEXT_PRINT_ERROR(...)
 #endif
 
 class SimpleTextImplDetails
 {
 	enum FontProperties
 	{
-		TEXTURE_SIZE_X = 256,
+		TEXTURE_SIZE_X = 128,
 		TEXTURE_SIZE_Y = 256,
 		SYMBOL_COUNT = 256,
 		SYMBOL_HEIGHT = 16,
@@ -133,21 +124,13 @@ class SimpleTextImplDetails
 		COMPILE,
 		LINK,
 	};
-
+	
 	enum Attributes
 	{
 		AttributePosition = 0,
-		AttributeTextureCoord = 1,
-		AttributeColorF = 2,
-		AttributeColorB = 3,
+		AttributeTextureCoord = 1
 	};
-
-	enum
-	{
-		min_size = 0x1000,
-		vertex_size = (sizeof(int16_t) * 2 + sizeof(int16_t) * 2 + sizeof(uint8_t) * 8),
-	};
-
+	
 	class ANSI_EscapeCodeDecoder
 	{
 	public:
@@ -169,16 +152,16 @@ class SimpleTextImplDetails
 		void Apply();
 		void Reset();
 		IEscapeCodeExecuter* m_callBack;
-
+		
 		bool m_setBold;
 		bool m_setNormal;
 		bool m_setBackgroundColor;
 		bool m_setTextColor;
-
+		
 		SimpleText::Color m_textColor;
 		SimpleText::Color m_backgroundColor;
 	};
-
+	
 	class EscapeCodeExecuter :public ANSI_EscapeCodeDecoder::IEscapeCodeExecuter
 	{
 	public:
@@ -187,14 +170,8 @@ class SimpleTextImplDetails
 		virtual void GetColor(SimpleText::ForegroundBackground type, SimpleText::NormalBold& bold, SimpleText::Color& color);
 		SimpleTextImplDetails* m_owner;
 	};
-
+	
 public:
-	template<typename T>
-	inline static T clamp(T x, T low, T high)
-	{
-		return x < low ? low : (x > high ? high : x);
-	}
-
 	SimpleTextImplDetails();
 	~SimpleTextImplDetails();
 	void CreateFontTexture();
@@ -204,59 +181,51 @@ public:
 	void BindAttributes();
 	void BindUniforms();
 	unsigned char* GenerateFontBitmap();
+	void ApplyTextSize();
+	void SetSymbol(char symbol, float posX, float posY);
+	void Render();
+	void StartDraw();
+	void EndDraw();
 	void SetColor(SimpleText::ForegroundBackground type, SimpleText::Color color, SimpleText::NormalBold bold);
 	void GetColor(SimpleText::ForegroundBackground type, SimpleText::Color &color, SimpleText::NormalBold &bold);
 	void ResetAnsiColor();
 	void DecodeColor(SimpleText::Color color, SimpleText::NormalBold bold, unsigned char& r, unsigned char& g, unsigned char& b);
 	void EnableBlending(bool enabled);
-	bool Succeeded(GLuint object, Stage stage);
-	void SetColor(SimpleText::ForegroundBackground type, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+	bool Failed(GLuint object, Stage stage);
+	void SetColorf(SimpleText::ForegroundBackground type, float r, float g, float b, float a);
 	void SetTextSize(SimpleText::FontSize size);
-	void Label(const char* text, int posX, int posY, SimpleText::Alignment a);
-	void SubmitSymbol(char symbol, float posX, float posY, int shift);
-
-	void Render();
+	void RenderLabel(const char* text, int posX, int posY, SimpleText::Alignment a=SimpleText::LEFT);
+	
 private:
-	void StartDraw();
-	void EndDraw();
-	void ResizeVertexBuffer(size_t newSize);
-
-	GLuint m_vbo;
-	GLuint m_ibo;
-
 	GLuint m_texture;
 	GLuint m_vertexShader;
 	GLuint m_fragmentShader;
 	GLuint m_shaderprogram;
-
-	GLint u_texture;
-	GLint u_viewport;
-
-	uint8_t* m_vertex_buffer;
-	uint16_t* m_index_buffer;
-	size_t m_vertex_buffer_size;
-	size_t m_vertex_buffer_reserved;
-	size_t m_vertex_buffer_offset;
-	size_t m_vertex_count;
-
+	
+	GLint m_textureSamperULoc;
+	GLint m_positionULoc;
+	GLint m_textureCoordULoc;
+	GLint m_textColorULoc;
+	GLint m_backgroundColorULoc;
+	
+	GLuint m_vbo;
+	
 	SimpleText::FontSize m_fontsize;
-	int m_sizeX;
-	int m_sizeY;
+	float m_sizeX;
+	float m_sizeY;
 	GLint m_viewport[4];
-
-	uint8_t m_textColor[4];
-	uint8_t m_backColor[4];
-
-	GLint m_backUpSfactorRGB;
-	GLint m_backUpDfactorRGB;
-	GLint m_backUpSfactorAlpha;
-	GLint m_backUpDfactorAlpha;
-
+	
+	GLfloat m_textColor[4];
+	GLfloat m_backColor[4];
+	
+	GLint m_backUpSfactor;
+	GLint m_backUpDfactor;
+	
 	bool m_blendingEnabled;
 	GLboolean m_backUpBlendingState;
-
+	
 	ANSI_EscapeCodeDecoder m_ansiDecoder;
-
+	
 	SimpleText::Color m_ansiTextColor;
 	SimpleText::Color m_ansiBackgroundColor;
 	SimpleText::NormalBold m_ansiBold;
@@ -294,33 +263,23 @@ inline void SimpleText::EnableBlending(bool enabled)
 	m_impl->EnableBlending(enabled);
 }
 
-inline void SimpleText::Label(const char* text, int posX, int posY, SimpleText::Alignment a)
+inline void SimpleText::RenderLabel(const char* text, int posX, int posY, Alignment a)
 {
-	m_impl->Label(text, posX, posY, a);
+	m_impl->RenderLabel(text, posX, posY,  a);
 }
 
-inline void SimpleText::Render()
+inline void SimpleText::SetColor(ForegroundBackground type, unsigned char r, unsigned char g, unsigned char b, unsigned char a)
 {
-	m_impl->Render();
+	SetColorf(type,
+			  static_cast<float>(r) / 255.0f,
+			  static_cast<float>(g) / 255.0f,
+			  static_cast<float>(b) / 255.0f,
+			  static_cast<float>(a) / 255.0f);
 }
 
-inline void SimpleText::SubmitSymbol(char s, int x, int y)
+inline void SimpleText::SetColorf(ForegroundBackground type, float r, float g, float b, float a)
 {
-	m_impl->SubmitSymbol(s, static_cast<float>(x), static_cast<float>(y), 0);
-}
-
-inline void SimpleText::SetColor(ForegroundBackground type, uint8_t r, uint8_t g, uint8_t b, uint8_t a)
-{
-	m_impl->SetColor(type, r, g, b, a);
-}
-
-void SimpleText::SetColorf(ForegroundBackground type, float r, float g, float b, float a)
-{
-	uint8_t _r = SimpleTextImplDetails::clamp(static_cast<int>(r * 255.0f), 0, 255);
-	uint8_t _g = SimpleTextImplDetails::clamp(static_cast<int>(g * 255.0f), 0, 255);
-	uint8_t _b = SimpleTextImplDetails::clamp(static_cast<int>(b * 255.0f), 0, 255);
-	uint8_t _a = SimpleTextImplDetails::clamp(static_cast<int>(a * 255.0f), 0, 255);
-	m_impl->SetColor(type, _r, _g, _b, _a);
+	m_impl->SetColorf(type, r, g, b, a);
 }
 
 inline void SimpleText::SetColor(ForegroundBackground type, Color color, NormalBold bold)
@@ -333,14 +292,9 @@ inline void SimpleText::SetTextSize(FontSize size)
 	m_impl->SetTextSize(size);
 }
 
-inline SimpleTextImplDetails::SimpleTextImplDetails() :m_vertexShader(0), m_fragmentShader(0), m_shaderprogram(0), m_vertex_buffer(
-		nullptr), m_vertex_buffer_size(0), m_vertex_buffer_reserved(0), m_vertex_buffer_offset(0), m_vertex_count(0), m_viewport{0}
+inline SimpleTextImplDetails::SimpleTextImplDetails() :m_vertexShader(0), m_fragmentShader(0), m_shaderprogram(0), m_vbo(0)
 {
 	m_ansiDecoder.SetExecutor(new EscapeCodeExecuter(this));
-	m_vertex_buffer = nullptr;
-	m_index_buffer = nullptr;
-	m_vertex_buffer_reserved = 0;
-	ResizeVertexBuffer(min_size);
 }
 
 inline SimpleTextImplDetails::~SimpleTextImplDetails()
@@ -552,38 +506,48 @@ inline bool SimpleTextImplDetails::ANSI_EscapeCodeDecoder::DecodeEscapeCode(cons
 	return false;
 }
 
-inline void SimpleTextImplDetails::Label(const char* text, int posX, int posY, SimpleText::Alignment a)
+inline void SimpleTextImplDetails::RenderLabel(const char* text, int posX, int posY, SimpleText::Alignment a)
 {
+	ApplyTextSize();
+	
+	glUseProgram(m_shaderprogram);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, m_texture);
+	
 	const char* begin = text;
 	const char* end = begin;
 	for (; *end != '\0';++end);
-
-	int offset = m_vertex_buffer_offset;
-
+	
+	StartDraw();
 	int pos = 0;
-	int symbol_size = SYMBOL_WIDTH * m_fontsize;
+
 	for (const char* it = begin; it != end;)
 	{
 		char symbol = '\0';
 		if (!m_ansiDecoder.DecodeEscapeCode(it, end, symbol))
 		{
-			SubmitSymbol(symbol, static_cast<float>(posX), static_cast<float>(posY), pos);
 			++pos;
 		}
 	}
 	switch(a)
 	{
-		case SimpleText::LEFT: return;
-		case SimpleText::CENTER: pos /= 2; break;
-		case SimpleText::RIGHT: break;
+		case SimpleText::LEFT: pos = 0; break;
+		case SimpleText::CENTER: pos = -pos / 2; break;
+		case SimpleText::RIGHT: pos = -pos; break;
 	}
-
-	uint8_t* ptr = m_vertex_buffer + offset * vertex_size;
-	for (int i = offset; i < m_vertex_buffer_offset; ++i)
+	for (const char* it = begin; it != end;)
 	{
-		*(int16_t*)(ptr + 0) -= 4 * symbol_size * pos;
-		ptr += vertex_size;
+		char symbol = '\0';
+		if (!m_ansiDecoder.DecodeEscapeCode(it, end, symbol))
+		{
+			SetSymbol(symbol,
+					  pos * m_sizeX - 1.0f + 2.0f * posX / m_viewport[2],
+					  -2.0f * posY / m_viewport[3] + 1.0f - m_sizeY);
+			Render();
+			++pos;
+		}
 	}
+	EndDraw();
 }
 
 inline void SimpleTextImplDetails::EnableBlending(bool enable)
@@ -595,24 +559,28 @@ inline void SimpleTextImplDetails::SetColor(SimpleText::ForegroundBackground typ
 {
 	unsigned char r, g, b;
 	DecodeColor(color, bold, r, g, b);
-	uint8_t* previousColor = nullptr;
-	SimpleText::Color* effectedColor = nullptr;
+	GLfloat* previousColor = NULL;
+	SimpleText::Color* effectedColor = NULL;
 	switch (type)
 	{
-	case SimpleText::TEXT_COLOR:
-		previousColor = m_textColor;
-		effectedColor = &m_ansiTextColor;
-		break;
-	case SimpleText::BACKGROUND_COLOR:
-		previousColor = m_backColor;
-		effectedColor = &m_ansiBackgroundColor;
-		break;
+		case SimpleText::TEXT_COLOR:
+			previousColor = m_textColor;
+			effectedColor = &m_ansiTextColor;
+			break;
+		case SimpleText::BACKGROUND_COLOR:
+			previousColor = m_backColor;
+			effectedColor = &m_ansiBackgroundColor;
+			break;
 	}
-	if (previousColor != nullptr)
+	if (previousColor != NULL)
 	{
-		SetColor(type, r, g, b, 255);
+		SetColorf(type,
+				  static_cast<float>(r) / 255.0f,
+				  static_cast<float>(g) / 255.0f,
+				  static_cast<float>(b) / 255.0f,
+				  previousColor[3]);
 	}
-	if (effectedColor != nullptr)
+	if (effectedColor != NULL)
 	{
 		*effectedColor = color;
 		m_ansiBold = bold;
@@ -623,13 +591,13 @@ inline void SimpleTextImplDetails::GetColor(SimpleText::ForegroundBackground typ
 {
 	switch (type)
 	{
-	case SimpleText::TEXT_COLOR:
-		color = m_ansiTextColor;
-		break;
-	case SimpleText::BACKGROUND_COLOR:
-		color = m_ansiBackgroundColor;
-		break;
-	}	
+		case SimpleText::TEXT_COLOR:
+			color = m_ansiTextColor;
+			break;
+		case SimpleText::BACKGROUND_COLOR:
+			color = m_ansiBackgroundColor;
+			break;
+	}
 	bold = m_ansiBold;
 }
 
@@ -640,17 +608,17 @@ inline void SimpleTextImplDetails::ResetAnsiColor()
 	m_ansiBold = SimpleText::NORMAL;
 }
 
-inline void SimpleTextImplDetails::SetColor(SimpleText::ForegroundBackground type, uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+inline void SimpleTextImplDetails::SetColorf(SimpleText::ForegroundBackground type, float r, float g, float b, float a)
 {
-	uint8_t *color = NULL;
+	GLfloat *color = NULL;
 	switch (type)
 	{
-	case SimpleText::TEXT_COLOR:
-		color = m_textColor;
-		break;
-	case SimpleText::BACKGROUND_COLOR:
-		color = m_backColor;
-		break;
+		case SimpleText::TEXT_COLOR:
+			color = m_textColor;
+			break;
+		case SimpleText::BACKGROUND_COLOR:
+			color = m_backColor;
+			break;
 	}
 	if (color != NULL)
 	{
@@ -696,185 +664,96 @@ inline void SimpleTextImplDetails::DecodeColor(SimpleText::Color color, SimpleTe
 inline void SimpleTextImplDetails::SetTextSize(SimpleText::FontSize size)
 {
 	m_fontsize = size;
-	m_sizeX = SYMBOL_WIDTH * m_fontsize;
-	m_sizeY = SYMBOL_HEIGHT * m_fontsize;
 }
 
-inline bool SimpleTextImplDetails::Succeeded(GLuint object, Stage stage)
+inline void SimpleTextImplDetails::ApplyTextSize()
+{
+	glGetIntegerv(GL_VIEWPORT, m_viewport);
+	
+	m_sizeX = 2.0f * static_cast<float>(SYMBOL_WIDTH * m_fontsize) / m_viewport[2];
+	m_sizeY = 2.0f * static_cast<float>(SYMBOL_HEIGHT * m_fontsize) / m_viewport[3];
+}
+
+inline bool SimpleTextImplDetails::Failed(GLuint object, Stage stage)
 {
 	GLint maxLength = 0;
 	GLint status = GL_FALSE;
-	char* infoLog = nullptr;
 	switch (stage)
 	{
-	case COMPILE:
-		glGetShaderiv(object, GL_COMPILE_STATUS, &status);
-		glGetShaderiv(object, GL_INFO_LOG_LENGTH, &maxLength);
-		if (maxLength > 1)
-		{
-			infoLog = new char[static_cast<GLuint>(maxLength)];
-			glGetShaderInfoLog(object, maxLength, &maxLength, infoLog);
-		}
-		break;
-	case LINK:
-		glGetProgramiv(object, GL_LINK_STATUS, &status);
-		glGetProgramiv(object, GL_INFO_LOG_LENGTH, &maxLength);
-		if (maxLength > 1)
-		{
-			infoLog = new char[static_cast<GLuint>(maxLength)];
-			glGetProgramInfoLog(object, maxLength, &maxLength, infoLog);
-		}
-		break;
+		case COMPILE:
+			glGetShaderiv(object, GL_COMPILE_STATUS, &status);
+			glGetShaderiv(object, GL_INFO_LOG_LENGTH, &maxLength);
+			break;
+		case LINK:
+			glGetShaderiv(object, GL_LINK_STATUS, &status);
+			glGetShaderiv(object, GL_INFO_LOG_LENGTH, &maxLength);
+			break;
 	}
-	bool return_value = true;
-	if (maxLength > 1)
+	if (status == GL_FALSE)
 	{
-		if (status == GL_FALSE)
-		{
-			return_value = false;
-			SIMPLE_TEXT_PRINT_ERROR("GLSL Error\n");
-		}
-		else
-		{
-			SIMPLE_TEXT_PRINT_ERROR("GLSL Warning\n");
-		}
+		char* infoLog = new char[static_cast<GLuint>(maxLength)];
+		glGetShaderInfoLog(object, maxLength, &maxLength, infoLog);
 		SIMPLE_TEXT_PRINT_ERROR("%s\n", infoLog);
+		delete[] infoLog;
+		return true;
 	}
-	else if (status == GL_FALSE)
-	{
-		return_value = false;
-		SIMPLE_TEXT_PRINT_ERROR("Error without info log\n");
-	}
-	delete[] infoLog;
-	return return_value;
+	return false;
 }
 
-inline void SimpleTextImplDetails::ResizeVertexBuffer(size_t newSize)
+inline void SimpleTextImplDetails::SetSymbol(char symbol, float posX, float posY)
 {
-	assert(newSize % 4 == 0);
-	if (newSize > m_vertex_buffer_reserved)
-	{
-		uint64_t v = newSize + 1;
-
-		v--;
-		v |= v >> 1U;
-		v |= v >> 2U;
-		v |= v >> 4U;
-		v |= v >> 8U;
-		v |= v >> 16U;
-		v |= v >> 32U;
-		v++;
-
-		uint64_t old_reserved = m_vertex_buffer_reserved;
-		m_vertex_buffer_reserved = static_cast<size_t>(v);
-		m_vertex_buffer = static_cast<uint8_t*>(realloc(m_vertex_buffer, vertex_size * m_vertex_buffer_reserved));
-		m_index_buffer = static_cast<uint16_t*>(realloc(m_index_buffer, sizeof(uint16_t) * m_vertex_buffer_reserved / 4 * 6));
-
-		uint64_t start_index =old_reserved / 4 * 6;
-		for (int i = old_reserved; i < m_vertex_buffer_reserved; i += 4)
-		{
-			m_index_buffer[start_index + 0] = i + 0;
-			m_index_buffer[start_index + 1] = i + 1;
-			m_index_buffer[start_index + 2] = i + 2;
-			m_index_buffer[start_index + 3] = i + 0;
-			m_index_buffer[start_index + 4] = i + 2;
-			m_index_buffer[start_index + 5] = i + 3;
-			start_index += 6;
-		}
-	}
-	m_vertex_buffer_size = newSize;
-}
-
-inline void SimpleTextImplDetails::SubmitSymbol(char _symbol, float posX, float posY, int shift)
-{
-	m_sizeX = SYMBOL_WIDTH * m_fontsize;
-	m_sizeY = SYMBOL_HEIGHT * m_fontsize;
-	int symbol = (unsigned char)_symbol;
-	int y = symbol / (TEXTURE_SIZE_X / 2 / SYMBOL_WIDTH);
-	int x = symbol % (TEXTURE_SIZE_X / 2 / SYMBOL_WIDTH);
-	x *= 2;
-
-	int16_t uv[4] = {
-			static_cast<int16_t>(4 * SYMBOL_WIDTH * x),
-			static_cast<int16_t>(4 * SYMBOL_HEIGHT * y),
-			static_cast<int16_t>(4 * SYMBOL_WIDTH * (x + 1)),
-			static_cast<int16_t>(4 * SYMBOL_HEIGHT * (y + 1))
-	};
-
-	int16_t pos[4] = {
-			static_cast<int16_t>(4 * (shift * m_sizeX + posX)),
-			static_cast<int16_t>(4 * (posY - m_sizeY)),
-			static_cast<int16_t>(4 * (shift * m_sizeX + posX + m_sizeX)),
-			static_cast<int16_t>(4 * (posY))
-	};
-
-	int ids[] = {0, 1, 0, 3, 2, 3, 2, 1};
-
-	ResizeVertexBuffer(4 + m_vertex_buffer_offset);
-
-	uint8_t* ptr = m_vertex_buffer + m_vertex_buffer_offset * vertex_size;
-
-	for (int i = 0; i < 4; ++i)
-	{
-		memcpy(ptr, pos + ids[2 * i + 0], sizeof(int16_t)); ptr += sizeof(int16_t);
-		memcpy(ptr, pos + ids[2 * i + 1], sizeof(int16_t)); ptr += sizeof(int16_t);
-		memcpy(ptr, uv + ids[2 * i + 0], sizeof(int16_t)); ptr += sizeof(int16_t);
-		memcpy(ptr, uv + ids[2 * i + 1], sizeof(int16_t)); ptr += sizeof(int16_t);
-		memcpy(ptr, m_textColor, sizeof(uint8_t) * 4); ptr += 4 * sizeof(uint8_t);
-		memcpy(ptr, m_backColor, sizeof(uint8_t) * 4); ptr += 4 * sizeof(uint8_t);
-	}
-	m_vertex_buffer_offset += 4;
-	m_vertex_count += 4;
+	int y = symbol / (TEXTURE_SIZE_X / SYMBOL_WIDTH);
+	int x = symbol % (TEXTURE_SIZE_X / SYMBOL_WIDTH);
+	float val[4];
+	val[0] = static_cast<float>(SYMBOL_WIDTH * x) / TEXTURE_SIZE_X;
+	val[1] = static_cast<float>(SYMBOL_HEIGHT * y) / TEXTURE_SIZE_Y;
+	val[2] = static_cast<float>(SYMBOL_WIDTH) / TEXTURE_SIZE_X;
+	val[3] = static_cast<float>(SYMBOL_HEIGHT) / TEXTURE_SIZE_Y;
+	glUniform4fv(m_textureCoordULoc, 1, val);
+	val[0] = posX;
+	val[1] = posY;
+	val[2] = m_sizeX;
+	val[3] = m_sizeY;
+	glUniform4fv(m_positionULoc, 1, val);
+	int i = 0;
+	glUniform1iv(m_textureSamperULoc, 1, &i);
+	glUniform4fv(m_textColorULoc, 1, m_textColor);
+	glUniform4fv(m_backgroundColorULoc, 1, m_backColor);
 }
 
 inline void SimpleTextImplDetails::Render()
 {
-	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-	glBufferData(GL_ARRAY_BUFFER, m_vertex_count * vertex_size, m_vertex_buffer, GL_STREAM_DRAW);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ibo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_vertex_count / 4 * 6 * sizeof(short), m_index_buffer, GL_STREAM_DRAW);
-	StartDraw();
-
-	glDrawElements(GL_TRIANGLES, m_vertex_count / 4 * 6, GL_UNSIGNED_SHORT, 0);
-
-	EndDraw();
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	m_vertex_buffer_offset = 0;
-	m_vertex_count = 0;
+	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
 inline void SimpleTextImplDetails::CreateVBO()
 {
+	const GLfloat vertices[6][4] = {
+		{ 0.0, 0.0, 0.0, 1.0 },
+		{ 0.0, 1.0, 0.0, 0.0 },
+		{ 1.0, 1.0, 1.0, 0.0 },
+		{ 0.0, 0.0, 0.0, 1.0 },
+		{ 1.0, 1.0, 1.0, 0.0 },
+		{ 1.0, 0.0, 1.0, 1.0 } };
+	
 	glGenBuffers(1, &m_vbo);
-	glGenBuffers(1, &m_ibo);
+	
+	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
+	glBufferData(GL_ARRAY_BUFFER, 4 * 6 * sizeof(GLfloat), vertices, GL_STATIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 inline void SimpleTextImplDetails::Free()
 {
 	glDeleteBuffers(1, &m_vbo);
-	glDeleteBuffers(1, &m_ibo);
 	glDeleteProgram(m_shaderprogram);
 	glDeleteShader(m_vertexShader);
 	glDeleteShader(m_fragmentShader);
 	glDeleteTextures(1, &m_texture);
-	free(m_vertex_buffer);
-	free(m_index_buffer);
 }
 
 inline void SimpleTextImplDetails::StartDraw()
 {
-	glUseProgram(m_shaderprogram);
-
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, m_texture);
-
-	int i = 0;
-	glUniform1iv(u_texture, 1, &i);
-
-	glGetIntegerv(GL_VIEWPORT, m_viewport);
-	glUniform2i(u_viewport, m_viewport[2], m_viewport[3]);
-
 	m_backUpBlendingState = glIsEnabled(GL_BLEND);
 	if (m_blendingEnabled)
 	{
@@ -882,12 +761,10 @@ inline void SimpleTextImplDetails::StartDraw()
 		{
 			glEnable(GL_BLEND);
 		}
-
-		glGetIntegerv(GL_BLEND_SRC_RGB, &m_backUpSfactorRGB);
-		glGetIntegerv(GL_BLEND_DST_RGB, &m_backUpDfactorRGB);
-		glGetIntegerv(GL_BLEND_SRC_ALPHA, &m_backUpSfactorAlpha);
-		glGetIntegerv(GL_BLEND_DST_ALPHA, &m_backUpDfactorAlpha);
-
+#ifndef __APPLE__
+		glGetIntegerv(GL_BLEND_SRC, &m_backUpSfactor);
+		glGetIntegerv(GL_BLEND_DST, &m_backUpDfactor);
+#endif
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	}
 	else
@@ -897,19 +774,15 @@ inline void SimpleTextImplDetails::StartDraw()
 			glDisable(GL_BLEND);
 		}
 	}
-
+	
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
-
+	
 	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
 	glEnableVertexAttribArray(AttributePosition);
-	glVertexAttribPointer(AttributePosition, 2, GL_SHORT, GL_FALSE, vertex_size, 0);
+	glVertexAttribPointer(AttributePosition, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), 0);
 	glEnableVertexAttribArray(AttributeTextureCoord);
-	glVertexAttribPointer(AttributeTextureCoord, 2, GL_UNSIGNED_SHORT, GL_FALSE, vertex_size, (GLvoid*)(2 * sizeof(int16_t)));
-	glEnableVertexAttribArray(AttributeColorF);
-	glVertexAttribPointer(AttributeColorF, 4, GL_UNSIGNED_BYTE, GL_FALSE, vertex_size, (GLvoid*)(4 * sizeof(uint16_t)));
-	glEnableVertexAttribArray(AttributeColorB);
-	glVertexAttribPointer(AttributeColorB, 4, GL_UNSIGNED_BYTE, GL_FALSE, vertex_size, (GLvoid*)(4 * sizeof(uint16_t)+ 4 * sizeof(uint8_t)));
+	glVertexAttribPointer(AttributeTextureCoord, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)(2 * sizeof(GLfloat)));
 }
 
 inline void SimpleTextImplDetails::EndDraw()
@@ -920,74 +793,64 @@ inline void SimpleTextImplDetails::EndDraw()
 		{
 			glDisable(GL_BLEND);
 		}
-		glBlendFuncSeparate(static_cast<GLenum>(m_backUpSfactorRGB), static_cast<GLenum>(m_backUpDfactorRGB), static_cast<GLenum>(m_backUpSfactorAlpha), static_cast<GLenum>(m_backUpDfactorAlpha));
+		glBlendFunc(static_cast<GLenum>(m_backUpSfactor), static_cast<GLenum>(m_backUpDfactor));
 	}
 	glDisableVertexAttribArray(AttributePosition);
 	glDisableVertexAttribArray(AttributeTextureCoord);
-	glDisableVertexAttribArray(AttributeColorF);
-	glDisableVertexAttribArray(AttributeColorB);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 inline void SimpleTextImplDetails::CreateShaderProgram()
 {
 	const GLchar* vShaderCode =
-		"#ifdef GL_ES \n"
-        "precision mediump float; \n"
-		"#endif \n"
-		"attribute vec2 in_position; \n"
-		"attribute vec2 in_coord; \n"
-		"attribute vec4 in_colorf; \n"
-		"attribute vec4 in_colorb; \n"
-		"uniform ivec2 u_viewport; \n"
-		"varying vec2 out_coord; \n"
-		"varying vec4 out_colorf; \n"
-		"varying vec4 out_colorb; \n"
-		"void main() {\n"
-        "   vec2 pos = 2.0 * in_position / vec2(u_viewport * 4) - vec2(1.0);"
-		"	gl_Position = vec4(pos.x, -pos.y, 0.0, 1.0); \n"
-		"	out_coord = in_coord / vec2(256.0, 256.0) / 4.0; \n"
-		"	out_colorf = in_colorf / 255.0; \n"
-		"	out_colorb = in_colorb / 255.0; \n"
-		"}\n";
-
+	"attribute vec2 in_position; \n"
+	"attribute vec2 in_coord; \n"
+	"varying vec2 out_coord; \n"
+	"uniform vec4 posoffset; \n"
+	"void main(void) {\n"
+	"	gl_Position = vec4(vec3(posoffset.xy + posoffset.zw * in_position, 0.0), 1.0); \n"
+	"	out_coord = in_coord; \n"
+	"}\n";
+	
 	const GLchar* fShaderCode =
-		"#ifdef GL_ES \n"
-		"precision mediump float; \n"
-		"#endif \n"
-		"varying vec2 out_coord; \n"
-		"varying vec4 out_colorf; \n"
-		"varying vec4 out_colorb; \n"
-		"uniform sampler2D text; \n"
-		"void main() {\n"
-		"	float c = float(texture2D(text, out_coord).r > 0.4); \n"
-		"	gl_FragColor = mix(out_colorb, out_colorf, vec4(c)); \n"
-		"}\n";
+	"#ifdef GL_ES \n"
+	"precision highp float; \n"
+	"#endif \n"
+	"varying vec2 out_coord; \n"
+	"uniform sampler2D text; \n"
+	"uniform vec4 textoffset; \n"
+	"uniform vec4 textColor; \n"
+	"uniform vec4 backgroundColor; \n"
+	"void main(void) {\n"
+	"	vec2 baseCoord = textoffset.xy + textoffset.zw * out_coord; \n"
+	"	float c = texture2D(text, baseCoord).r; \n"
+	"	gl_FragColor = mix(backgroundColor, textColor, vec4(c)); \n"
+	"}\n";
 	
 	m_vertexShader = glCreateShader(GL_VERTEX_SHADER);
 	glShaderSource(m_vertexShader, 1, &vShaderCode, 0);
 	glCompileShader(m_vertexShader);
-
-	if (!Succeeded(m_vertexShader, COMPILE))
+	
+	if (Failed(m_vertexShader, COMPILE))
 	{
 		return;
 	}
-
+	
 	m_fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
 	glShaderSource(m_fragmentShader, 1, &fShaderCode, 0);
 	glCompileShader(m_fragmentShader);
-
-	if (!Succeeded(m_fragmentShader, COMPILE))
+	
+	if (Failed(m_fragmentShader, COMPILE))
 	{
 		return;
 	}
-
+	
 	m_shaderprogram = glCreateProgram();
 	glAttachShader(m_shaderprogram, m_vertexShader);
 	glAttachShader(m_shaderprogram, m_fragmentShader);
 	glLinkProgram(m_shaderprogram);
-
-	if (!Succeeded(m_shaderprogram, LINK))
+	
+	if (Failed(m_shaderprogram, LINK))
 	{
 		return;
 	}
@@ -995,16 +858,17 @@ inline void SimpleTextImplDetails::CreateShaderProgram()
 
 inline void SimpleTextImplDetails::BindUniforms()
 {
-	u_texture = glGetUniformLocation(m_shaderprogram, "text");
-	u_viewport = glGetUniformLocation(m_shaderprogram, "u_viewport");
+	m_textureSamperULoc = glGetUniformLocation(m_shaderprogram, "text");
+	m_textureCoordULoc = glGetUniformLocation(m_shaderprogram, "textoffset");
+	m_positionULoc = glGetUniformLocation(m_shaderprogram, "posoffset");
+	m_textColorULoc = glGetUniformLocation(m_shaderprogram, "textColor");
+	m_backgroundColorULoc = glGetUniformLocation(m_shaderprogram, "backgroundColor");
 }
 
 inline void SimpleTextImplDetails::BindAttributes()
 {
 	glBindAttribLocation(m_shaderprogram, AttributePosition, "in_position");
 	glBindAttribLocation(m_shaderprogram, AttributeTextureCoord, "in_coord");
-	glBindAttribLocation(m_shaderprogram, AttributeColorF, "in_colorf");
-	glBindAttribLocation(m_shaderprogram, AttributeColorB, "in_colorb");
 }
 
 inline void SimpleTextImplDetails::CreateFontTexture()
@@ -1012,21 +876,19 @@ inline void SimpleTextImplDetails::CreateFontTexture()
 	GLuint texture[1];
 	glGenTextures(1, &texture[0]);
 	m_texture = texture[0];
-
+	
 	glBindTexture(GL_TEXTURE_2D, m_texture);
-
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	
 	unsigned char* buff = GenerateFontBitmap();
-
+	
 #if defined __EMSCRIPTEN__ || TARGET_OS_IPHONE
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, TEXTURE_SIZE_X, TEXTURE_SIZE_Y, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, buff);
 #else
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, TEXTURE_SIZE_X, TEXTURE_SIZE_Y, 0, GL_RED, GL_UNSIGNED_BYTE, buff);
 #endif
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glBindTexture(GL_TEXTURE_2D, 0);
-
+	
 	delete[] buff;
 }
 
@@ -1290,24 +1152,22 @@ inline unsigned char* SimpleTextImplDetails::GenerateFontBitmap()
 		0x00, 0x00, 0x00, 0x00, 0x3e, 0x3e, 0x3e, 0x3e, 0x3e, 0x3e, 0x3e, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 	};
-
+	
 	unsigned char* buff = new unsigned char[TEXTURE_SIZE_Y * TEXTURE_SIZE_X];
 	for (unsigned int i = 0; i < TEXTURE_SIZE_Y; i++)
 	{
 		for (unsigned int j = 0; j < TEXTURE_SIZE_X; j++)
 		{
-			unsigned int x = j >> 3U;
-			if (x % 2 == 1)
-				continue;
-			unsigned int y = i >> 4U;
+			unsigned int x = j >> 3;
+			unsigned int y = i >> 4;
 			unsigned char v = 0;
-			unsigned int pos = y * TEXTURE_SIZE_X / 2 / SYMBOL_WIDTH + x / 2;
-			unsigned int py = i & 0b00001111U;
-			unsigned int px = j & 0b00000111U;
-
-			unsigned char m = vgaFont[pos * SYMBOL_HEIGHT + py] & (1U << px);
+			unsigned int pos = y * TEXTURE_SIZE_X / SYMBOL_WIDTH + x;
+			unsigned int py = i - (y << 4);
+			unsigned int px = j - (x << 3);
+			
+			unsigned char m = vgaFont[pos * SYMBOL_HEIGHT + py] & (1 << px);
 			v = static_cast<unsigned char>((m == 0 ? 0x00 : 0xff));
-
+			
 			buff[i * TEXTURE_SIZE_X + j] = v;
 		}
 	}
